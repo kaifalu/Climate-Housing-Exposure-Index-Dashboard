@@ -1,0 +1,16 @@
+name: climate-housing-dashboard
+channels:
+  - conda-forge
+dependencies:
+  - python=3.13
+  - bokeh=3.8.2
+  - fastapi=0.128.2
+  - geopandas=1.1.2
+  - matplotlib=3.10.8
+  - numpy=2.3.5
+  - pandas=2.2.3
+  - pyogrio=0.12.1
+  - pyproj=3.7.2
+  - scipy=1.17.0
+  - shapely=2.1.2
+  - uvicorn=0.48.0

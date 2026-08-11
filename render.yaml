@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: climate-housing-exposure-index
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: PORT
+        value: 8050

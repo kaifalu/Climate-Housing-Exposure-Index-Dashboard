@@ -1,0 +1,40 @@
+CLIMATE-HOUSING EXPOSURE INDEX DASHBOARD — FINAL RELEASE MANIFEST
+
+Package type: Complete deployment package
+Generated: 2026-08-11 02:13 UTC
+Root folder: Climate_Housing_Exposure_Index_Dashboard
+Files before checksum list: 50
+Uncompressed size before checksum list: 60.5 MB
+
+Validation status
+- Revised dashboard validation passed before packaging.
+- The standalone entry file is index.html.
+- The compound-hotspot implementation retains all eight factor combinations and the documented screening thresholds.
+- Archive integrity is tested after ZIP creation.
+
+Contents
+- .nojekyll
+- ATTRIBUTION_AND_DATA_NOTES.md
+- Dockerfile
+- GITHUB_PAGES_DEPLOYMENT.md
+- PACKAGE_MANIFEST.txt
+- README.md
+- REVISION_NOTES.md
+- TERMS_OF_USE.md
+- build_dashboard.py
+- climate_housing_exposure_index_dashboard.html
+- data/ (24 files)
+- docs/ (1 files)
+- environment.yml
+- index.html
+- preprocess_data.py
+- render.yaml
+- requirements.txt
+- run_dashboard.bat
+- run_dashboard.sh
+- screenshots/ (4 files)
+- scripts/ (2 files)
+- server.py
+
+Package notes
+Contains the revised GitHub Pages entry file, compatibility HTML, all source code, processed web data, full housing-point arrays, documentation, screenshots, FastAPI application, Docker/Render configuration, and validation utilities. The original source File Geodatabase is not duplicated in this package.
