@@ -2,10 +2,10 @@
 """Prepare web-ready assets for the Harris County Climate Housing Exposure dashboard.
 
 The script reads the uploaded Esri File Geodatabase, consolidates tract metrics,
-prepares simplified parcel and tract geometry, builds a complete housing density
-grid, stores point arrays for viewport queries, and derives ordinary-kriging
-surfaces when the four named GDB kriging rasters are unavailable to the
-open-source FileGDB reader.
+prepares simplified parcel, tract, county, and ZIP-code geometry, builds a complete
+housing density grid, stores point arrays for viewport queries, and derives
+ordinary-kriging surfaces when the four named GDB kriging rasters are
+unavailable to the open-source FileGDB reader.
 """
 from __future__ import annotations
 
@@ -209,8 +209,26 @@ def main() -> None:
     tracts["centroid_y"] = cent.y.to_numpy()
 
     county = read_layer(gdb, "Harris_County").to_crs(3857)
-    county_geom = county.geometry.unary_union
+    county_geom = county.geometry.union_all()
     bounds = tuple(map(float, county.total_bounds))
+
+    # ZIP-code boundaries are used only for map navigation and geographic
+    # reference. Dashboard indicators remain at their original tract, parcel,
+    # point, or grid geographies; no ZIP-level analytical aggregation is made.
+    zip_fields = ["ZIP", "POSTAL", "STATE", "ZIP_TYPE"]
+    zipcodes = read_layer(gdb, "Harris_County_Zipcodes", zip_fields).to_crs(3857)
+    zipcodes["ZIP"] = zipcodes["ZIP"].astype(str).str.replace(r"\.0$", "", regex=True).str.zfill(5)
+    zipcodes["POSTAL"] = zipcodes["POSTAL"].fillna("").astype(str)
+    zipcodes["STATE"] = zipcodes["STATE"].fillna("TX").astype(str)
+    zipcodes["ZIP_TYPE"] = zipcodes["ZIP_TYPE"].fillna("").astype(str)
+    zip_bounds = zipcodes.geometry.bounds.rename(columns={
+        "minx": "bbox_minx", "miny": "bbox_miny",
+        "maxx": "bbox_maxx", "maxy": "bbox_maxy",
+    })
+    zip_points = zipcodes.geometry.representative_point()
+    zipcodes = pd.concat([zipcodes.reset_index(drop=True), zip_bounds.reset_index(drop=True)], axis=1)
+    zipcodes["label_x"] = zip_points.x.to_numpy()
+    zipcodes["label_y"] = zip_points.y.to_numpy()
 
     tracts_web = tracts.copy()
     tracts_web.geometry = tracts_web.geometry.simplify(30, preserve_topology=True)
@@ -221,6 +239,9 @@ def main() -> None:
     county_web = county.copy()
     county_web.geometry = county_web.geometry.simplify(55, preserve_topology=True)
     county_web.to_file(out / "county_web.geojson", driver="GeoJSON")
+    zipcodes_web = zipcodes.copy()
+    zipcodes_web.geometry = zipcodes_web.geometry.simplify(20, preserve_topology=True)
+    zipcodes_web.to_file(out / "zipcodes_web.geojson", driver="GeoJSON")
 
     # Climate point layers.
     climate_parts = []
@@ -303,7 +324,8 @@ def main() -> None:
         "requested_kriging_layers_not_exposed": [x for x in requested_kriging if x not in available],
         "kriging_display_substitution": "Derived ordinary-kriging surfaces from the corresponding uploaded GMT point layers.",
         "counts": {
-            "census_tracts": int(len(tracts)), "parcels": int(len(parcels)),
+            "census_tracts": int(len(tracts)), "zip_codes": int(len(zipcodes)),
+            "parcels": int(len(parcels)),
             "single_family_points": int(len(sf_xy)), "multi_family_points": int(len(mf_xy)),
             "housing_grid_cells": int(len(housing_grid)),
             "all_three_high_hotspots": int((tracts["hotspot_ca"].astype(str) == "All Three High").sum()),
@@ -321,6 +343,7 @@ def main() -> None:
         },
         "duplicate_CHEI_2050_max_abs_difference": max_chei_diff,
         "field_name_note": "Actual GDB tract layers use extreme_precip rather than the extreme_precipi spelling in the supplied inventory text.",
+        "zip_code_note": "Harris_County_Zipcodes is included for boundary display and search only; no ZIP-level indicator aggregation is produced.",
         "privacy_note": "The dashboard exports housing locations/counts only; property account and mailing fields are not included in web assets.",
     }
     (out / "data_quality_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")

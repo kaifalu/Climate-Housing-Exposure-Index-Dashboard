@@ -14,8 +14,10 @@ This release incorporates the requested GitHub Pages and visual-design revisions
 - unused lower-page space is reduced through a more balanced three-column layout and additional explanatory content;
 - the footer is reorganized into clearly separated project, purpose, and contact sections;
 - the top of the dashboard now includes four concise sections: **Dashboard Overview**, **Key Functions**, **Potential Audiences**, and **Practical Applications**;
-- the compound-hotspot layer now retains all eight underlying factor combinations rather than showing only a 0–3 score; and
-- the hotspot legend displays the exact countywide 80th-percentile screening thresholds used to define “high.”
+- the compound-hotspot layer now retains all eight underlying factor combinations rather than showing only a 0–3 score;
+- the hotspot map and legend use a pattern system—diagonal lines for precipitation hazard, vertical lines for household growth, and dots for social vulnerability—so combinations remain distinguishable without relying on color alone;
+- the hotspot legend displays the exact countywide 80th-percentile screening thresholds used to define “high”; and
+- a ZIP-code locator now zooms to a selected five-digit Harris County ZIP boundary, with an optional toggle for all 155 ZIP boundaries. ZIP geometry is used for navigation only; dashboard indicators remain at their source geographies.
 
 ## Open or publish the dashboard
 
@@ -40,7 +42,7 @@ Open either of these files in a modern browser:
 - `index.html` — recommended entry file;
 - `climate_housing_exposure_index_dashboard.html` — compatibility copy with identical content.
 
-The static dashboard embeds the prepared analytical layers and Bokeh JavaScript. Its housing-point view uses a deterministic 30,000-record single-family preview sample plus all multi-family points, while the 1 km housing-density grid is based on every source housing record.
+The static dashboard embeds the prepared analytical layers—including the ZIP boundaries—and Bokeh JavaScript. Its housing-point view uses a deterministic 30,000-record single-family preview sample plus all multi-family points, while the 1 km housing-density grid is based on every source housing record.
 
 ### Full-data local application
 
@@ -75,7 +77,7 @@ The dashboard visualizes how future climate-related precipitation extremes inter
 The Explore Dashboard tab provides:
 
 - CHEI for 2020 and 2050 and the 2020–2050 adaptation gap;
-- the complete eight-category compound-hotspot typology;
+- the complete eight-category, pattern-based compound-hotspot typology;
 - tract precipitation, model points, and derived kriging surfaces at four GMT thresholds;
 - GMT +2.5°C versus +1.5°C precipitation percentage change;
 - 2050 population, household, and employment projections and their 2020–2050 changes;
@@ -83,7 +85,7 @@ The Explore Dashboard tab provides:
 - tract, density-grid, and point views of single- and multi-family housing stocks;
 - parcel housing-unit change and current/projected land-use views;
 - configurable two-factor overlap screening using countywide percentile thresholds;
-- exact GEOID search, hover details, tract selection, distribution charts, and selected-tract profiles; and
+- exact GEOID search, five-digit ZIP-code search, an optional all-ZIP-boundaries overlay, hover details, tract selection, distribution charts, and selected-tract profiles; and
 - contextual explanations, interpretation reminders, methods, data sources, and terms of use.
 
 ## Compound-hotspot definition
@@ -96,7 +98,7 @@ The compound-hotspot classification is noncompensatory: a tract receives one hig
 | Projected household growth | 2020–2050 change **≥ 746 households** |
 | Social vulnerability | 2020 SVI **≥ 0.88386** |
 
-The dashboard retains all eight combinations:
+The dashboard retains all eight combinations and represents them with a factor-based pattern system: diagonal lines indicate precipitation hazard, vertical lines indicate projected household growth, and dots indicate social vulnerability. Combined categories overlay the relevant patterns:
 
 1. None high
 2. Hazard only
@@ -108,6 +110,10 @@ The dashboard retains all eight combinations:
 8. All three high
 
 These thresholds represent countywide 80th-percentile screening conventions rather than natural discontinuities in risk.
+
+## ZIP-code locator
+
+The dashboard includes a five-digit Harris County ZIP-code locator. Entering a ZIP code zooms the map to that boundary and draws a highlighted outline. The **Show all ZIP-code boundaries** toggle provides additional orientation across the county. ZIP boundaries are a navigation aid only: no CHEI, SVI, climate, growth, housing, or hotspot values are re-aggregated to ZIP geography.
 
 ## Potential audiences and applications
 
@@ -137,7 +143,7 @@ python server.py
 
 ## Rebuild from the File Geodatabase
 
-1. Extract `Climate_Housing_Exposure_Index_Dashboard.gdb.zip` so that the `.gdb` directory is available.
+1. Extract `Climate_Housing_Exposure_Index_Dashboard.gdb_add_on.zip` so that the `.gdb` directory is available.
 2. Run preprocessing:
 
 ```bash
@@ -169,6 +175,7 @@ File Geodatabase
     ├── Parcel land use/change ───┼── preprocess_data.py ── prepared web assets
     ├── Climate GMT points ───────┤                          ├── GeoJSON
     ├── Housing-stock points ─────┤                          ├── CSV / NPY
+    ├── ZIP-code boundaries ──────┤                          ├── ZIP GeoJSON
     └── County boundary ──────────┘                          └── kriging arrays
                                                                │
                            build_dashboard.py ───────────────────┤
@@ -180,7 +187,7 @@ File Geodatabase
 
 ## Kriging substitution and audit findings
 
-The uploaded geodatabase exposed 30 vector layers through the open-source FileGDB reader. It did not expose the four user-listed `gmt_15_pr_Kriging`, `gmt_20_pr_Kriging`, `gmt_25_pr_Kriging`, and `gmt_30_pr_Kriging` datasets. `preprocess_data.py` therefore derives ordinary-kriging display surfaces from the corresponding GMT point layers using a fitted exponential semivariogram. The dashboard explicitly labels these surfaces as derived; the original model points and tract aggregations remain available.
+The revised geodatabase exposed 31 vector layers through the open-source FileGDB reader. It did not expose the four user-listed `gmt_15_pr_Kriging`, `gmt_20_pr_Kriging`, `gmt_25_pr_Kriging`, and `gmt_30_pr_Kriging` datasets. `preprocess_data.py` therefore derives ordinary-kriging display surfaces from the corresponding GMT point layers using a fitted exponential semivariogram. The dashboard explicitly labels these surfaces as derived; the original model points and tract aggregations remain available.
 
 The two CHEI 2050 feature classes contain identical CHEI values and are consolidated in the interface. The actual tract precipitation layer names use `extreme_precip`, while the supplied inventory text used `extreme_precipi` for several names.
 
@@ -190,13 +197,13 @@ The two CHEI 2050 feature classes contain identical CHEI values and are consolid
 - The 1 km housing-density grid is calculated from all housing records.
 - Full housing coordinates are stored as x-sorted NumPy arrays; `server.py` uses binary search and y filtering to query only the current map viewport.
 - Point responses are deterministically capped to prevent browser overload.
-- Web assets exclude HCAD account IDs, mailing-city/state/ZIP fields, assessed values, and other unused property attributes.
+- Web assets exclude HCAD account IDs, property mailing-city/state/ZIP fields, assessed values, and other unused property attributes. The separate `Harris_County_Zipcodes` geometry is retained only for map navigation.
 
 ## Deployment options
 
 ### Static GitHub Pages
 
-Use `index.html` and `.nojekyll`. This option provides all tract, parcel, climate, chart, methods, and interpretation functions, plus the optimized housing-point preview.
+Use `index.html` and `.nojekyll`. This option provides all tract, ZIP-locator, parcel, climate, patterned-hotspot, chart, methods, and interpretation functions, plus the optimized housing-point preview.
 
 ### Full-data container service
 
@@ -222,6 +229,7 @@ The application exposes `/api/health` for service monitoring.
 | `scripts/validate_dashboard.py` | Validates files, counts, hotspot logic, and revised interface identifiers |
 | `data/data_quality_report.json` | Automated audit and summary totals |
 | `data/gdb_layer_inventory.csv` | Exposed geodatabase layer inventory |
+| `data/zipcodes_web.geojson` | Simplified 155-feature Harris County ZIP boundary layer used for location and orientation |
 | `Dockerfile`, `render.yaml` | Container deployment examples |
 | `REVISION_NOTES.md` | Detailed record of the interface and analytical revisions |
 | `TERMS_OF_USE.md` | Dashboard terms supplied for the project |

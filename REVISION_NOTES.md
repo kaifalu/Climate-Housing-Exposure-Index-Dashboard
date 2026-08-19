@@ -1,50 +1,47 @@
-# Revision Notes — August 2026
+# Revision Notes — August 19, 2026
 
-## Visual and layout improvements
+## ZIP-code location and boundary display
 
-- Increased the effective dashboard width and rebalanced the left, map, and profile columns.
-- Removed fixed-height constraints that caused long legends to overflow their cards.
-- Enlarged the distribution chart and adjusted plot margins, labels, and title sizing to prevent clipping.
-- Added active-layer interpretation bullets and a three-step “From map to use” panel.
-- Replaced the undersized footer with a full-width, three-part footer for project identity, purpose, and contact information.
-- Added a collapsible four-card introduction near the top of the dashboard covering the overview, key functions, audiences, and practical applications.
+- Added a new **04 Locate a ZIP Code** control beneath the census-tract locator.
+- Five-digit searches zoom to the matching `Harris_County_Zipcodes` feature and draw a prominent selected boundary.
+- Added an optional **Show all ZIP-code boundaries** toggle for countywide orientation.
+- Retained all 155 ZIP polygons and postal labels in the embedded dashboard data.
+- ZIP geometry is used only for location and orientation; CHEI, precipitation, SVI, growth, housing, and hotspot indicators are not re-aggregated to ZIP geography.
 
-## Compound-hotspot improvements
+## Pattern-based compound-hotspot map
 
-The former score-only legend has been replaced with the complete noncompensatory typology:
+The former color-dependent hotspot display has been replaced by a factor-based map and legend pattern system:
 
-- None high
-- Hazard only
-- Growth only
-- SVI only
-- Hazard + growth
-- Hazard + SVI
-- Growth + SVI
-- All three high
+- diagonal lines — high GMT +2.5°C precipitation;
+- vertical lines — high projected household growth;
+- dots — high social vulnerability; and
+- overlaid patterns — the corresponding two- or three-condition combinations.
 
-The legend now reports tract counts and displays the exact “high” thresholds:
+The complete noncompensatory typology is retained: none high, hazard only, growth only, SVI only, hazard + growth, hazard + SVI, growth + SVI, and all three high. The implementation uses condition-filtered geometry sources so that the exact semantic overlays remain responsive in a data-self-contained browser application.
 
-- GMT +2.5°C precipitation ≥ 203.603 mm
-- Projected household growth, 2020–2050 ≥ 746 households
-- SVI ≥ 0.88386
+The legend reports tract counts and the documented countywide 80th-percentile screening thresholds:
 
-The selected-tract profile also reports the combination, score, and active high-condition flags.
+- GMT +2.5°C precipitation ≥ 203.603 mm;
+- projected household growth, 2020–2050 ≥ 746 households; and
+- SVI ≥ 0.88386.
 
-## Analytical and interaction improvements
+## Existing interface improvements retained
 
-- Added numeric threshold reporting to the configurable two-factor overlap mode.
-- Added more useful explanatory text for numeric, categorical, point, grid, and surface layers.
-- Preserved the original analytical data and layer menu while improving interpretability.
-- Added `index.html` as the GitHub Pages entry file while retaining the original standalone filename as an identical compatibility copy.
+- Long legends remain inside their cards.
+- Distribution charts use enlarged canvases and margins to avoid clipping.
+- Active-layer interpretation bullets and the **From Map to Use** workflow remain available.
+- The four-part dashboard introduction and organized full-width footer are retained.
+- `index.html` remains the GitHub Pages entry file, and `climate_housing_exposure_index_dashboard.html` remains an identical compatibility copy.
 
 ## Validation
 
-The revised package verifies:
+The final package verifies:
 
-- required static, source, and data files;
-- 1,115 census tracts and 30 exposed geodatabase layers;
+- 1,115 census tracts, 155 ZIP boundaries, and 31 exposed geodatabase layers;
 - full single-family and multi-family point-array dimensions and sort order;
+- unique five-digit ZIP values and a functional search example for ZIP 77007;
 - exact hotspot score equivalence under the documented thresholds;
 - all eight hotspot combinations and the five all-three-high tracts;
-- presence of the revised overview, guidance, footer, and threshold content; and
-- byte-for-byte identity of the two standalone HTML entry files.
+- presence of the ZIP controls, optional boundary toggle, pattern legend, factor thresholds, overview, guidance, and footer;
+- byte-for-byte identity of the two data-self-contained HTML entry files; and
+- browser interaction tests for hotspot switching, ZIP search, and all-ZIP-boundary display.

@@ -26,6 +26,7 @@ from bokeh.models import (
     Slider,
     TabPanel,
     Tabs,
+    TapTool,
     TextInput,
     Toggle,
     WMTSTileSource,
@@ -70,15 +71,28 @@ HOTSPOT_ORDER = [
     "None high", "Hazard only", "Growth only", "SVI only",
     "Hazard + growth", "Hazard + SVI", "Growth + SVI", "All three high",
 ]
-HOTSPOT_COMBO_COLORS = {
-    "None high": "#E6E9EC",
-    "Hazard only": "#2B8CBE",
-    "Growth only": "#F2A654",
-    "SVI only": "#9A73B8",
-    "Hazard + growth": "#E76445",
-    "Hazard + SVI": "#6653A3",
-    "Growth + SVI": "#C84D82",
-    "All three high": "#8F1725",
+HOTSPOT_NEUTRAL_FILLS = {
+    "None high": "#F7F8F8",
+    "Hazard only": "#EEF2F3",
+    "Growth only": "#EEF2F3",
+    "SVI only": "#EEF2F3",
+    "Hazard + growth": "#E6ECEE",
+    "Hazard + SVI": "#E6ECEE",
+    "Growth + SVI": "#E6ECEE",
+    "All three high": "#D9E2E5",
+}
+# CSS equivalents of the three overlaid map patterns. Hazard is represented
+# by diagonal lines, growth by vertical lines, and social vulnerability by
+# dots; combined categories layer the corresponding patterns.
+HOTSPOT_PATTERN_STYLES = {
+    "None high": "background-color:#F7F8F8;",
+    "Hazard only": "background-color:#EEF2F3;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px);",
+    "Growth only": "background-color:#EEF2F3;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px);",
+    "SVI only": "background-color:#EEF2F3;background-image:radial-gradient(circle at 2px 2px,#263B4A 1.15px,transparent 1.35px);background-size:7px 7px;",
+    "Hazard + growth": "background-color:#E6ECEE;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px),repeating-linear-gradient(90deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px);",
+    "Hazard + SVI": "background-color:#E6ECEE;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px),radial-gradient(circle at 2px 2px,#263B4A 1.15px,transparent 1.35px);background-size:auto,7px 7px;",
+    "Growth + SVI": "background-color:#E6ECEE;background-image:repeating-linear-gradient(90deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px),radial-gradient(circle at 2px 2px,#263B4A 1.15px,transparent 1.35px);background-size:auto,7px 7px;",
+    "All three high": "background-color:#D9E2E5;background-image:repeating-linear-gradient(135deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px),repeating-linear-gradient(90deg,transparent 0,transparent 5px,#263B4A 5px,#263B4A 6.5px),radial-gradient(circle at 2px 2px,#263B4A 1.15px,transparent 1.35px);background-size:auto,auto,7px 7px;",
 }
 
 
@@ -136,6 +150,7 @@ def build_dashboard() -> None:
     tracts = load_geojson("tracts_web.geojson")
     parcels = load_geojson("parcels_web.geojson")
     county = load_geojson("county_web.geojson")
+    zipcodes = load_geojson("zipcodes_web.geojson")
     housing_grid = load_geojson("housing_grid.geojson")
     climate = pd.read_csv(DATA / "climate_points.csv")
     sf_sample = pd.read_csv(DATA / "sf_sample.csv")
@@ -144,6 +159,7 @@ def build_dashboard() -> None:
     tract_xs, tract_ys = to_multipolygon_arrays(tracts.geometry)
     parcel_xs, parcel_ys = to_multipolygon_arrays(parcels.geometry)
     county_xs, county_ys = to_multipolygon_arrays(county.geometry)
+    zipcode_xs, zipcode_ys = to_multipolygon_arrays(zipcodes.geometry)
     grid_xs, grid_ys = to_multipolygon_arrays(housing_grid.geometry)
 
     tract_fields = [
@@ -194,11 +210,28 @@ def build_dashboard() -> None:
     tract_data["svi_high"] = svi_high.astype(int)
     tract_data["hotspot_score"] = hotspot_score
     tract_data["hotspot_combo"] = hotspot_combo
+    tract_data["hotspot_fill"] = [HOTSPOT_NEUTRAL_FILLS[value] for value in hotspot_combo]
 
     tract_data["fill_color"] = initial_quantile_colors(tract_data["CHEI_2050"], SEQ_BLUE)
     tract_data["display_label"] = ["Climate Housing Exposure Index, 2050"] * len(tracts)
     tract_data["display_value"] = [f"{v:.3f}" if np.isfinite(v) else "No data" for v in tract_data["CHEI_2050"]]
     tract_source = ColumnDataSource(tract_data, name="tract_source")
+
+    # Condition-specific geometry sources keep the semantic overlay system
+    # efficient: a tract is included only in the pattern source(s) corresponding
+    # to the high conditions it actually meets. Across all three sources this
+    # requires 671 geometry draws rather than drawing every tract three times.
+    hotspot_sources: dict[str, ColumnDataSource] = {}
+    for condition, mask in {
+        "hazard": hazard_high,
+        "growth": growth_high,
+        "svi": svi_high,
+    }.items():
+        indices = np.flatnonzero(mask).tolist()
+        hotspot_sources[condition] = ColumnDataSource({
+            "xs": [tract_data["xs"][i] for i in indices],
+            "ys": [tract_data["ys"][i] for i in indices],
+        }, name=f"hotspot_{condition}_source")
 
     parcel_data = {
         "xs": parcel_xs,
@@ -253,6 +286,21 @@ def build_dashboard() -> None:
         "kind": ["Single-family"] * len(sf_x) + ["Multi-family"] * len(mf_x),
     }, name="housing_point_source")
     county_source = ColumnDataSource({"xs": county_xs, "ys": county_ys}, name="county_source")
+    zipcode_source = ColumnDataSource({
+        "xs": zipcode_xs,
+        "ys": zipcode_ys,
+        "ZIP": zipcodes["ZIP"].fillna("").astype(str).tolist(),
+        "POSTAL": zipcodes["POSTAL"].fillna("").astype(str).tolist(),
+        "STATE": zipcodes["STATE"].fillna("TX").astype(str).tolist(),
+        "ZIP_TYPE": zipcodes["ZIP_TYPE"].fillna("").astype(str).tolist(),
+        "bbox_minx": pd.to_numeric(zipcodes["bbox_minx"], errors="coerce").to_numpy(dtype=float),
+        "bbox_miny": pd.to_numeric(zipcodes["bbox_miny"], errors="coerce").to_numpy(dtype=float),
+        "bbox_maxx": pd.to_numeric(zipcodes["bbox_maxx"], errors="coerce").to_numpy(dtype=float),
+        "bbox_maxy": pd.to_numeric(zipcodes["bbox_maxy"], errors="coerce").to_numpy(dtype=float),
+    }, name="zipcode_source")
+    selected_zip_source = ColumnDataSource({
+        "xs": [], "ys": [], "ZIP": [], "POSTAL": [], "STATE": [], "ZIP_TYPE": [],
+    }, name="selected_zip_source")
 
     minx, miny, maxx, maxy = county.total_bounds
     padx, pady = (maxx - minx) * 0.025, (maxy - miny) * 0.025
@@ -307,6 +355,34 @@ def build_dashboard() -> None:
         selection_line_color="#111111", selection_line_width=2.2,
         nonselection_fill_alpha=0.76, name="tracts",
     )
+    # Pattern semantics: diagonal lines = precipitation hazard; vertical lines
+    # = household growth; dots = social vulnerability. Tracts meeting multiple
+    # conditions receive multiple overlays, producing the agreed combination
+    # patterns while drawing only the condition-positive geometries.
+    hotspot_hazard_renderer = map_plot.multi_polygons(
+        xs="xs", ys="ys", source=hotspot_sources["hazard"],
+        fill_alpha=0.0, line_alpha=0.001, line_width=0.10,
+        hatch_pattern="right_diagonal_line", hatch_color="#263B4A",
+        hatch_alpha=0.74, hatch_scale=15.0, hatch_weight=1.05,
+        visible=False, level="annotation", name="hotspot_pattern_hazard",
+    )
+    hotspot_growth_renderer = map_plot.multi_polygons(
+        xs="xs", ys="ys", source=hotspot_sources["growth"],
+        fill_alpha=0.0, line_alpha=0.001, line_width=0.10,
+        hatch_pattern="vertical_line", hatch_color="#263B4A",
+        hatch_alpha=0.74, hatch_scale=15.0, hatch_weight=1.05,
+        visible=False, level="annotation", name="hotspot_pattern_growth",
+    )
+    hotspot_svi_renderer = map_plot.multi_polygons(
+        xs="xs", ys="ys", source=hotspot_sources["svi"],
+        fill_alpha=0.0, line_alpha=0.001, line_width=0.10,
+        hatch_pattern="dot", hatch_color="#263B4A",
+        hatch_alpha=0.78, hatch_scale=14.0, hatch_weight=1.15,
+        visible=False, level="annotation", name="hotspot_pattern_svi",
+    )
+    hotspot_pattern_renderers = [
+        hotspot_hazard_renderer, hotspot_growth_renderer, hotspot_svi_renderer,
+    ]
     climate_renderer = map_plot.scatter(
         x="x", y="y", source=climate_display_source, marker="circle", size=8,
         fill_color="color", fill_alpha=0.90, line_color="#ffffff", line_width=0.7,
@@ -319,7 +395,18 @@ def build_dashboard() -> None:
     )
     map_plot.multi_polygons(
         xs="xs", ys="ys", source=county_source, fill_alpha=0.0,
-        line_color=NAVY, line_width=2.3, line_alpha=0.96, name="county_boundary",
+        line_color=NAVY, line_width=2.3, line_alpha=0.96, level="annotation", name="county_boundary",
+    )
+    all_zip_renderer = map_plot.multi_polygons(
+        xs="xs", ys="ys", source=zipcode_source, fill_alpha=0.0,
+        line_color="#385A6D", line_width=0.85, line_alpha=0.46,
+        visible=False, level="overlay", name="all_zip_boundaries",
+    )
+    selected_zip_renderer = map_plot.multi_polygons(
+        xs="xs", ys="ys", source=selected_zip_source,
+        fill_color=GOLD, fill_alpha=0.055, line_color=GOLD,
+        line_width=4.0, line_alpha=1.0, visible=True,
+        name="selected_zip_boundary",
     )
 
     map_plot.add_tools(HoverTool(renderers=[tract_renderer], tooltips=[
@@ -341,6 +428,12 @@ def build_dashboard() -> None:
         ("Total housing records", "@total_count{0,0}"),
     ]))
     map_plot.add_tools(HoverTool(renderers=[housing_point_renderer], tooltips=[("Housing stock", "@kind")]))
+    map_plot.add_tools(HoverTool(renderers=[all_zip_renderer, selected_zip_renderer], tooltips=[
+        ("ZIP code", "@ZIP"), ("Postal name", "@POSTAL"), ("Type", "@ZIP_TYPE"),
+    ]))
+    tap_tool = map_plot.select_one(TapTool)
+    if tap_tool is not None:
+        tap_tool.renderers = [tract_renderer]
 
     layer_meta = {
         "chei_2050": {"label": "Composite • Climate Housing Exposure Index, 2050", "short": "CHEI (2050)", "source": "tract", "field": "CHEI_2050", "kind": "seq", "palette": SEQ_BLUE, "unit": "index", "decimals": 3, "description": "Projected tract-level CHEI for 2050, combining precipitation hazard, projected housing exposure, and social vulnerability."},
@@ -371,7 +464,7 @@ def build_dashboard() -> None:
         "chei_2050": ["Geography: census tracts; projection year: 2050.", "Higher values indicate greater combined climate–housing exposure.", "Use for integrated adaptation and housing-resilience screening."],
         "chei_2020": ["Geography: census tracts; baseline year: 2020.", "Higher values indicate greater baseline combined exposure.", "Use as a reference for comparison with 2050 conditions."],
         "adapt_gap": ["Calculated as CHEI 2050 minus CHEI 2020.", "Positive values indicate increasing modeled exposure; negative values indicate decline.", "Use to identify potential adaptation gaps over time."],
-        "hotspot": ["One point is assigned for each high condition; the score is noncompensatory.", "All eight combinations are retained, not only the 0–3 score classes.", "The 80th-percentile cutoffs are transparent screening conventions, not natural risk boundaries."],
+        "hotspot": ["One point is assigned for each high condition; the score is noncompensatory.", "Diagonal lines denote precipitation hazard, vertical lines denote household growth, and dots denote social vulnerability.", "Overlaid patterns preserve all eight combinations without relying on color alone."],
         "pr_tract": ["Geography: census tracts; switch among four GMT thresholds.", "Values represent average three-day totals for modeled extreme events.", "Use to compare the spatial pattern of precipitation hazard as warming increases."],
         "pr_change": ["Compares GMT +2.5°C with GMT +1.5°C.", "Higher percentages indicate larger modeled increases in extreme precipitation.", "Use to screen climate-sensitivity patterns across tracts."],
         "pr_points": ["Geography: 246 climate-model points per GMT threshold.", "Point values are the inputs underlying tract summaries and interpolation.", "Use to inspect the spatial support of the climate layer."],
@@ -413,6 +506,11 @@ def build_dashboard() -> None:
     threshold_slider = Slider(title="High-value threshold (percentile)", start=60, end=95, step=5, value=80, width=CONTROL_CONTENT_WIDTH, visible=False)
     search_input = TextInput(title="Find census tract GEOID", placeholder="e.g., 48201342001", width=250)
     search_button = Button(label="Find", button_type="primary", width=75)
+    zip_search_input = TextInput(title="Find ZIP code", placeholder="e.g., 77007", width=250)
+    zip_search_button = Button(label="Find", button_type="primary", width=75)
+    show_all_zip_toggle = Toggle(
+        label="Show all ZIP-code boundaries", active=False, width=CONTROL_CONTENT_WIDTH,
+    )
     reset_button = Button(label="Reset map extent", width=CONTROL_CONTENT_WIDTH)
 
     legend_div = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=180, css_classes=["chei-panel", "legend-panel"])
@@ -422,6 +520,7 @@ def build_dashboard() -> None:
     map_guide = Div(text="", width=MAP_PLOT_WIDTH, min_height=180, css_classes=["map-guide-wrapper"])
     map_actions = Div(text="", width=MAP_PLOT_WIDTH, min_height=175, css_classes=["map-actions-wrapper"])
     search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=28, css_classes=["search-status"])
+    zip_search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=42, css_classes=["search-status", "zip-search-status"])
 
     initial_values = np.asarray(tract_data["CHEI_2050"], dtype=float)
     counts, edges = np.histogram(initial_values[np.isfinite(initial_values)], bins=12)
@@ -458,7 +557,7 @@ def build_dashboard() -> None:
     legend_div.text = "<div class='panel-eyebrow'>MAP LEGEND</div><h4>Climate Housing Exposure Index, 2050</h4>" + "".join(legend_rows) + "<div class='legend-unit'>index</div>"
     layer_info.text = "<div class='panel-eyebrow'>ABOUT THIS LAYER</div><h4>Climate Housing Exposure Index, 2050</h4><p>Projected tract-level CHEI for 2050, combining precipitation hazard, projected housing exposure, and social vulnerability.</p><ul class='layer-bullets'><li>Geography: census tracts; projection year: 2050.</li><li>Higher values indicate greater combined climate–housing exposure.</li><li>Use for integrated adaptation and housing-resilience screening.</li></ul>"
     hist_summary.text = f"<p><strong>Median:</strong> {np.nanmedian(initial_values):.3f} &nbsp; <strong>Range:</strong> {np.nanmin(initial_values):.3f} to {np.nanmax(initial_values):.3f}</p>"
-    point_status.text = '<span class="status-dot"></span>Click a census tract to update the profile panel. Use the overlap switch to screen co-exposure.'
+    point_status.text = '<span class="status-dot"></span>Click a census tract to update the profile panel, or use the ZIP-code locator to zoom to a familiar area.'
     map_guide.text = "<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>Climate Housing Exposure Index, 2050</h3></div><div class='guide-grid'><div><b>What it shows</b><p>Projected combined exposure at the census-tract level.</p></div><div><b>How to read it</b><p>Darker blues indicate higher CHEI values relative to other Harris County tracts.</p></div><div><b>Planning use</b><p>Screen locations for coordinated climate adaptation and housing-resilience review.</p></div></div></div>"
     map_actions.text = "<div class='action-panel'><div class='action-heading'><span>FROM MAP TO USE</span><h3>A three-step exploratory workflow</h3></div><div class='action-grid'><div><i>1</i><b>Screen</b><p>Locate tracts with higher relative CHEI values.</p></div><div><i>2</i><b>Diagnose</b><p>Click a tract and compare its climate and growth profile.</p></div><div><i>3</i><b>Validate</b><p>Confirm findings with authoritative local data before action.</p></div></div></div>"
 
@@ -520,30 +619,327 @@ const META = __META__;
 const SEQ_BLUE = __SEQ_BLUE__;
 const DIVERGING = __DIVERGING__;
 const BIVARIATE = __BIVARIATE__;
-const HOTSPOT_COLORS = __HOTSPOT_COLORS__;
+const HOTSPOT_FILLS = __HOTSPOT_FILLS__;
+const HOTSPOT_PATTERN_STYLES = __HOTSPOT_PATTERN_STYLES__;
 const HOTSPOT_ORDER = __HOTSPOT_ORDER__;
 const HOTSPOT_THRESHOLDS = {precip:203.603, households:746, svi:0.88386};
 const LAND_COLORS = {'Residential':'#2ca25f','Commercial':'#fdae6b','Vacant Developable (includes Farming)':'#bdbdbd','Multiple':'#756bb1','Industrial':'#e6550d','Unknown':'#969696','Other':'#6baed6','Gov/Med/Edu':'#3182bd'};
 const FACTOR_LABELS = {'pr_15':'GMT +1.5°C precipitation','pr_20':'GMT +2.0°C precipitation','pr_25':'GMT +2.5°C precipitation','pr_30':'GMT +3.0°C precipitation','SVI':'Social Vulnerability Index','CHEI_2050':'CHEI 2050','pop_chg':'Population growth','hh_chg':'Household growth','job_chg':'Employment growth','parcel_hu_change':'Parcel housing-unit change'};
 const FACTOR_DECIMALS = {'pr_15':3,'pr_20':3,'pr_25':3,'pr_30':3,'SVI':5,'CHEI_2050':3,'pop_chg':0,'hh_chg':0,'job_chg':0,'parcel_hu_change':0};
-function finiteValues(arr){return Array.from(arr).filter(v=>Number.isFinite(Number(v))).map(Number);}
-function quantile(arr,q){const a=finiteValues(arr).sort((x,y)=>x-y);if(!a.length)return NaN;const p=(a.length-1)*q,l=Math.floor(p),h=Math.ceil(p);return l===h?a[l]:a[l]+(a[h]-a[l])*(p-l);}
-function fmt(v,d=0){const n=Number(v);if(!Number.isFinite(n))return 'No data';return n.toLocaleString(undefined,{minimumFractionDigits:d,maximumFractionDigits:d});}
-function esc(s){return String(s).replace(/[&<>'"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));}
-function titleOf(meta){return meta.label.split('•').pop().trim();}
-function sequential(arr,palette){const b=[quantile(arr,.2),quantile(arr,.4),quantile(arr,.6),quantile(arr,.8)];const colors=Array.from(arr).map(v=>{const n=Number(v);if(!Number.isFinite(n))return '#d9d9d9';let i=0;while(i<b.length&&n>b[i])i++;return palette[i];});return {colors:colors,breaks:b};}
-function diverging(arr){const av=finiteValues(arr).map(Math.abs),lim=Math.max(quantile(av,.95),1e-9);const colors=Array.from(arr).map(v=>{const n=Number(v);if(!Number.isFinite(n))return '#d9d9d9';if(n<=-lim/2)return DIVERGING[0];if(n<0)return DIVERGING[1];if(n===0)return DIVERGING[2];if(n<lim/2)return DIVERGING[3];return DIVERGING[4];});return {colors:colors,lim:lim};}
-function setAllInvisible(){parcel_renderer.visible=false;climate_renderer.visible=false;grid_renderer.visible=false;housing_renderer.visible=false;kr15.visible=false;kr20.visible=false;kr25.visible=false;kr30.visible=false;}
-function legendSequential(label,unit,breaks,palette,decimals){const lows=[-Infinity,...breaks],highs=[...breaks,Infinity];let rows='';for(let i=0;i<palette.length;i++){let txt='';if(i===0)txt='≤ '+fmt(highs[i],decimals);else if(i===palette.length-1)txt='> '+fmt(lows[i],decimals);else txt=fmt(lows[i],decimals)+' – '+fmt(highs[i],decimals);rows+=`<div class='legend-row'><span style='background:${palette[i]}'></span><b>${txt}</b></div>`;}return `<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(label)}</h4>${rows}<div class='legend-unit'>${esc(unit||'')}</div>`;}
-function legendHotspot(arr){const counts={};HOTSPOT_ORDER.forEach(k=>counts[k]=0);Array.from(arr).forEach(v=>counts[v]=(counts[v]||0)+1);const rows=HOTSPOT_ORDER.map(k=>`<div class='legend-row hotspot-row'><span style='background:${HOTSPOT_COLORS[k]}'></span><b>${esc(k)}</b><em>${fmt(counts[k])}</em></div>`).join('');return `<div class='panel-eyebrow'>MAP LEGEND</div><h4>Compound-hotspot typology</h4><div class='threshold-card'><div class='threshold-kicker'>HIGH = COUNTY 80TH PERCENTILE OR ABOVE</div><div><b>Extreme precipitation</b><span>≥ 203.603 mm at GMT +2.5°C</span></div><div><b>Household growth</b><span>≥ 746 households, 2020–2050</span></div><div><b>Social vulnerability</b><span>SVI ≥ 0.88386</span></div></div><div class='legend-subtitle'>CONDITION COMBINATION · TRACT COUNT</div>${rows}`;}
-function layerInfoHTML(meta){const bullets=(meta.bullets||[]).map(x=>`<li>${esc(x)}</li>`).join('');return `<div class='panel-eyebrow'>ABOUT THIS LAYER</div><h4>${esc(titleOf(meta))}</h4><p>${esc(meta.description)}</p><ul class='layer-bullets'>${bullets}</ul>`;}
-function mapGuideHTML(meta){const b=meta.bullets||[];return `<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>${esc(titleOf(meta))}</h3></div><div class='guide-grid'><div><b>Scope</b><p>${esc(b[0]||meta.description)}</p></div><div><b>Interpretation</b><p>${esc(b[1]||'Compare values and patterns across Harris County.')}</p></div><div><b>Planning use</b><p>${esc(b[2]||'Use as an exploratory screening layer and verify with authoritative local data.')}</p></div></div></div>`;}
-function actionHTML(meta,id){if(id==='hotspot')return `<div class='action-panel hotspot-action'><div class='action-heading'><span>FROM TYPOLOGY TO PRIORITY</span><h3>Use combinations to distinguish planning needs</h3></div><div class='action-grid'><div><i>1</i><b>Corrective review</b><p>Hazard and SVI combinations can flag existing exposure and vulnerability.</p></div><div><i>2</i><b>Preventive review</b><p>Growth combinations can flag future development pressure before build-out.</p></div><div><i>3</i><b>Coordinated action</b><p>All-three-high tracts warrant integrated climate, housing, and equity review.</p></div></div><div class='action-note'>The thresholds are transparent screening conventions rather than natural discontinuities in risk.</div></div>`;return `<div class='action-panel'><div class='action-heading'><span>FROM MAP TO USE</span><h3>A three-step exploratory workflow</h3></div><div class='action-grid'><div><i>1</i><b>Screen</b><p>Locate tracts, parcels, points, or cells with higher relative values.</p></div><div><i>2</i><b>Diagnose</b><p>Hover and select features; compare the mapped pattern with related layers.</p></div><div><i>3</i><b>Validate</b><p>Confirm modeled or projected findings with authoritative local data before action.</p></div></div></div>`;}
-function updateHistogram(arr,label,color,decimals){const a=finiteValues(arr);hist_plot.visible=true;if(!a.length){hist_plot.visible=false;hist_summary.text='<p>No numeric distribution is available for this layer.</p>';return;}const min=Math.min(...a),max=Math.max(...a),bins=12,width=(max-min||1)/bins,counts=new Array(bins).fill(0);for(const v of a){let i=Math.floor((v-min)/width);if(i>=bins)i=bins-1;if(i<0)i=0;counts[i]++;}const left=[],right=[];for(let i=0;i<bins;i++){left.push(min+i*width);right.push(min+(i+1)*width);}hist_source.data={left:left,right:right,top:counts,color:new Array(bins).fill(color)};hist_source.change.emit();hist_plot.title.text='Distribution · '+fmt(a.length,0)+' features';hist_xaxis.axis_label=label;hist_summary.text=`<p><strong>Median:</strong> ${fmt(quantile(a,.5),decimals)}<br><strong>Range:</strong> ${fmt(min,decimals)} to ${fmt(max,decimals)}</p>`;}
-function sampleHousing(){const mode=housing_select.value,s=housing_sample.data,sx=(s.sf_x&&s.sf_x.length)?Array.from(s.sf_x[0]):[],sy=(s.sf_y&&s.sf_y.length)?Array.from(s.sf_y[0]):[],mx=(s.mf_x&&s.mf_x.length)?Array.from(s.mf_x[0]):[],my=(s.mf_y&&s.mf_y.length)?Array.from(s.mf_y[0]):[];let x=[],y=[],color=[],kind=[];if(mode==='single'||mode==='combined'){x=x.concat(sx);y=y.concat(sy);color=color.concat(new Array(sx.length).fill('#168C95'));kind=kind.concat(new Array(sx.length).fill('Single-family'));}if(mode==='multi'||mode==='combined'){x=x.concat(mx);y=y.concat(my);color=color.concat(new Array(mx.length).fill('#F16913'));kind=kind.concat(new Array(mx.length).fill('Multi-family'));}housing_point_source.data={x:x,y:y,color:color,kind:kind};housing_point_source.change.emit();point_status.text=`<span class='status-dot'></span>Standalone preview: displaying ${fmt(x.length,0)} points. Start <code>server.py</code> for viewport queries against all source points.`;}
-function requestHousingPoints(){if(layer_select.value!=='housing_points')return;if(window.location.protocol==='file:'||window.location.protocol==='about:'||window.location.protocol==='sandbox:'||!window.fetch){sampleHousing();return;}const xmin=map_plot.x_range.start,xmax=map_plot.x_range.end,ymin=map_plot.y_range.start,ymax=map_plot.y_range.end,url=`/api/housing-points?housing_type=${encodeURIComponent(housing_select.value)}&xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&max_points=50000`;point_status.text='<span class="status-dot loading"></span>Loading housing-stock points for the current viewport…';fetch(url).then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();}).then(d=>{housing_point_source.data={x:d.x,y:d.y,color:d.color,kind:d.kind};housing_point_source.change.emit();point_status.text=`<span class='status-dot'></span>Displaying ${fmt(d.n_returned,0)} of ${fmt(d.n_total,0)} source points in the current viewport.`;}).catch(()=>sampleHousing());}
-function applyOverlap(){const d=tract_source.data,a=Array.from(d[overlap_a.value]),b=Array.from(d[overlap_b.value]),q=threshold_slider.value/100,ta=quantile(a,q),tb=quantile(b,q),colors=[],labels=[],counts=[0,0,0,0];let bothPop=0,bothHH=0,bothJobs=0;const la=FACTOR_LABELS[overlap_a.value]||overlap_a.value,lb=FACTOR_LABELS[overlap_b.value]||overlap_b.value,da=FACTOR_DECIMALS[overlap_a.value]??2,db=FACTOR_DECIMALS[overlap_b.value]??2;for(let i=0;i<a.length;i++){const ah=Number(a[i])>=ta,bh=Number(b[i])>=tb,c=(ah?1:0)+(bh?2:0);colors.push(BIVARIATE[c]);counts[c]++;labels.push(['Neither high',`${la} high`,`${lb} high`,'Both high'][c]);if(c===3){bothPop+=Number(d.hp_2050[i])||0;bothHH+=Number(d.hh_2050[i])||0;bothJobs+=Number(d.j_2050[i])||0;}}d.fill_color=colors;d.display_label=new Array(a.length).fill('High–high overlap class');d.display_value=labels;tract_source.change.emit();legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>Bivariate high-value overlap</h4><div class='threshold-card compact'><div class='threshold-kicker'>${fmt(threshold_slider.value)}TH-PERCENTILE CUTOFFS</div><div><b>${esc(la)}</b><span>High at ≥ ${fmt(ta,da)}</span></div><div><b>${esc(lb)}</b><span>High at ≥ ${fmt(tb,db)}</span></div></div><div class='legend-row'><span style='background:${BIVARIATE[0]}'></span><b>Neither high</b><em>${fmt(counts[0])}</em></div><div class='legend-row'><span style='background:${BIVARIATE[1]}'></span><b>${esc(la)} only</b><em>${fmt(counts[1])}</em></div><div class='legend-row'><span style='background:${BIVARIATE[2]}'></span><b>${esc(lb)} only</b><em>${fmt(counts[2])}</em></div><div class='legend-row'><span style='background:${BIVARIATE[3]}'></span><b>Both high</b><em>${fmt(counts[3])}</em></div>`;overlap_summary.text=`<div class='panel-eyebrow'>BOTH HIGH</div><h4>${fmt(counts[3])} census tracts</h4><p><b>${fmt(bothPop)}</b> projected residents<br><b>${fmt(bothHH)}</b> projected households<br><b>${fmt(bothJobs)}</b> projected jobs</p><div class='legend-unit'>Cutoffs: ${esc(la)} ≥ ${fmt(ta,da)} · ${esc(lb)} ≥ ${fmt(tb,db)}</div>`;hist_plot.visible=false;hist_summary.text='<p>Overlap mode compares two factors; numeric cutoffs are shown in the legend.</p>';layer_info.text=`<div class='panel-eyebrow'>ABOUT THIS VIEW</div><h4>Transparent overlap screening</h4><p>Each factor is compared with its own countywide percentile cutoff.</p><ul class='layer-bullets'><li>The darkest class is high on both selected factors.</li><li>Actual cutoff values update whenever the percentile or factor changes.</li><li>This is an exploratory screen, not a causal or regulatory classification.</li></ul>`;map_guide.text=`<div class='map-guide'><div class='guide-heading'><span>READING THE OVERLAP VIEW</span><h3>${esc(la)} × ${esc(lb)}</h3></div><div class='guide-grid'><div><b>Factor A cutoff</b><p>${esc(la)} is high at ${fmt(ta,da)} or above.</p></div><div><b>Factor B cutoff</b><p>${esc(lb)} is high at ${fmt(tb,db)} or above.</p></div><div><b>Interpretation</b><p>Darkest tracts meet both cutoffs and may warrant coordinated review.</p></div></div></div>`;map_actions.text=`<div class='action-panel'><div class='action-heading'><span>USING THE OVERLAP SCREEN</span><h3>Test sensitivity before prioritizing</h3></div><div class='action-grid'><div><i>1</i><b>Compare</b><p>Change factors to examine different forms of co-exposure.</p></div><div><i>2</i><b>Test</b><p>Move the percentile threshold to assess classification sensitivity.</p></div><div><i>3</i><b>Validate</b><p>Review both-high tracts with local evidence and stakeholder knowledge.</p></div></div></div>`;point_status.text='<span class="status-dot"></span>Overlap screening is active. Change factors or the percentile threshold to test alternatives.';}
-function updateLayer(){setAllInvisible();const active=overlap_toggle.active;layer_select.disabled=active;overlap_a.visible=active;overlap_b.visible=active;threshold_slider.visible=active;overlap_summary.visible=active;gmt_select.visible=!active&&['pr_tract','pr_points','pr_kriging'].includes(layer_select.value);housing_select.visible=!active&&['housing_density','housing_points'].includes(layer_select.value);const opacity=opacity_slider.value;tract_renderer.glyph.fill_alpha=opacity;tract_renderer.nonselection_glyph.fill_alpha=opacity;parcel_renderer.glyph.fill_alpha=opacity;grid_renderer.glyph.fill_alpha=opacity;climate_renderer.glyph.fill_alpha=opacity;housing_renderer.glyph.fill_alpha=Math.min(opacity,.72);kr15.glyph.global_alpha=opacity;kr20.glyph.global_alpha=opacity;kr25.glyph.global_alpha=opacity;kr30.glyph.global_alpha=opacity;tract_renderer.visible=true;tract_renderer.glyph.line_alpha=.75;tract_renderer.glyph.line_width=.55;if(active){applyOverlap();return;}const id=layer_select.value,meta=META[id],d=tract_source.data;let field=meta.field,arr=null,result=null;if(id==='pr_tract'||id==='pr_kriging')field='pr_'+gmt_select.value;if(meta.source==='tract'){arr=Array.from(d[field]);if(meta.kind==='seq')result=sequential(arr,meta.palette);else if(meta.kind==='div')result=diverging(arr);else if(meta.kind==='cat_hotspot')result={colors:arr.map(v=>HOTSPOT_COLORS[v]||'#d9d9d9')};d.fill_color=result.colors;d.display_label=new Array(arr.length).fill(titleOf(meta));d.display_value=arr.map(v=>(meta.kind==='cat_hotspot')?String(v):fmt(v,meta.decimals));tract_source.change.emit();if(meta.kind==='seq'){legend_div.text=legendSequential(titleOf(meta),meta.unit,result.breaks,meta.palette,meta.decimals);updateHistogram(arr,meta.short,meta.palette[3],meta.decimals);}else if(meta.kind==='div'){legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(titleOf(meta))}</h4><div class='legend-row'><span style='background:${DIVERGING[0]}'></span><b>Large decrease</b></div><div class='legend-row'><span style='background:${DIVERGING[1]}'></span><b>Decrease</b></div><div class='legend-row'><span style='background:${DIVERGING[2]}'></span><b>Near zero</b></div><div class='legend-row'><span style='background:${DIVERGING[3]}'></span><b>Increase</b></div><div class='legend-row'><span style='background:${DIVERGING[4]}'></span><b>Large increase</b></div><div class='legend-unit'>${esc(meta.unit||'')}</div>`;updateHistogram(arr,meta.short,DIVERGING[4],meta.decimals);}else{legend_div.text=legendHotspot(arr);hist_plot.visible=false;hist_summary.text='<p><strong>Noncompensatory typology:</strong> every tract is assigned to one of eight condition combinations. The legend reports tract counts and exact high-value thresholds.</p>';}}else if(meta.source==='parcel'){parcel_renderer.visible=true;tract_renderer.glyph.fill_alpha=.01;tract_renderer.nonselection_glyph.fill_alpha=.01;tract_renderer.glyph.line_alpha=.30;const p=parcel_source.data;arr=Array.from(p[field]);if(meta.kind==='seq'){result=sequential(arr,meta.palette);p.fill_color=result.colors;p.display_value=arr.map(v=>fmt(v,meta.decimals));legend_div.text=legendSequential(titleOf(meta),meta.unit,result.breaks,meta.palette,meta.decimals);updateHistogram(arr,meta.short,meta.palette[3],meta.decimals);}else{p.fill_color=arr.map(v=>LAND_COLORS[v]||'#969696');p.display_value=arr.map(String);const cats={};arr.forEach(v=>cats[v]=(cats[v]||0)+1);legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(titleOf(meta))}</h4>`+Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,n])=>`<div class='legend-row'><span style='background:${LAND_COLORS[k]||'#969696'}'></span><b>${esc(k)}</b><em>${fmt(n)}</em></div>`).join('');hist_plot.visible=false;hist_summary.text='<p>Categorical parcel layer; feature counts are shown in the legend.</p>';}parcel_source.change.emit();}else if(meta.source==='grid'){grid_renderer.visible=true;tract_renderer.glyph.fill_alpha=.01;tract_renderer.nonselection_glyph.fill_alpha=.01;tract_renderer.glyph.line_alpha=.28;const gd=grid_source.data;field=housing_select.value==='single'?'sf_count':housing_select.value==='multi'?'mf_count':'total_count';arr=Array.from(gd[field]);result=sequential(arr,meta.palette);gd.fill_color=result.colors;gd.display_value=arr.map(v=>fmt(v,0));grid_source.change.emit();legend_div.text=legendSequential((housing_select.value==='single'?'Single-family':housing_select.value==='multi'?'Multi-family':'Combined')+' housing-stock density','records per 1 km cell',result.breaks,meta.palette,0);updateHistogram(arr,'Housing records per cell',meta.palette[3],0);}else if(meta.source==='climate_points'){climate_renderer.visible=true;tract_renderer.glyph.fill_alpha=.01;tract_renderer.nonselection_glyph.fill_alpha=.01;tract_renderer.glyph.line_alpha=.30;const cm=climate_source.data,g=Number(gmt_select.value)/10,x=[],y=[],v=[];for(let i=0;i<cm.gmt.length;i++)if(Number(cm.gmt[i])===g){x.push(cm.x[i]);y.push(cm.y[i]);v.push(cm.precip[i]);}result=sequential(v,meta.palette);climate_display_source.data={x:x,y:y,gmt:new Array(x.length).fill(g),precip:v,color:result.colors};climate_display_source.change.emit();legend_div.text=legendSequential(`GMT ${g.toFixed(1)}°C climate points`,meta.unit,result.breaks,meta.palette,meta.decimals);updateHistogram(v,'3-day precipitation (mm)',meta.palette[3],1);}else if(meta.source==='kriging'){tract_renderer.glyph.fill_alpha=0;tract_renderer.nonselection_glyph.fill_alpha=0;tract_renderer.glyph.line_alpha=.50;tract_renderer.glyph.line_width=.40;const code=gmt_select.value;({'15':kr15,'20':kr20,'25':kr25,'30':kr30})[code].visible=true;const arr2=Array.from(d['pr_'+code]),r=sequential(arr2,meta.palette);legend_div.text=legendSequential(`GMT ${(Number(code)/10).toFixed(1)}°C kriging surface`,'mm',r.breaks,meta.palette,1);updateHistogram(arr2,'Tract precipitation (mm)',meta.palette[3],1);}else if(meta.source==='housing_points'){housing_renderer.visible=true;tract_renderer.glyph.fill_alpha=.01;tract_renderer.nonselection_glyph.fill_alpha=.01;tract_renderer.glyph.line_alpha=.24;legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>Housing-stock locations</h4><div class='legend-row'><span style='background:#168C95'></span><b>Single-family</b></div><div class='legend-row'><span style='background:#F16913'></span><b>Multi-family</b></div>`;hist_plot.visible=false;hist_summary.text='<p>Point display is optimized by viewport. The density layer uses every uploaded record.</p>';requestHousingPoints();}layer_info.text=layerInfoHTML(meta);map_guide.text=mapGuideHTML(meta);map_actions.text=actionHTML(meta,id);if(meta.source!=='housing_points')point_status.text='<span class="status-dot"></span>Click a census tract to update the profile panel. Use the overlap switch to screen co-exposure.';}
+
+function finiteValues(arr) {
+  return Array.from(arr).filter(v => Number.isFinite(Number(v))).map(Number);
+}
+function quantile(arr, q) {
+  const a = finiteValues(arr).sort((x, y) => x - y);
+  if (!a.length) return NaN;
+  const p = (a.length - 1) * q, l = Math.floor(p), h = Math.ceil(p);
+  return l === h ? a[l] : a[l] + (a[h] - a[l]) * (p - l);
+}
+function fmt(v, d=0) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return 'No data';
+  return n.toLocaleString(undefined, {minimumFractionDigits:d, maximumFractionDigits:d});
+}
+function esc(s) {
+  return String(s).replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
+}
+function titleOf(meta) { return meta.label.split('•').pop().trim(); }
+function sequential(arr, palette) {
+  const b = [quantile(arr,.2), quantile(arr,.4), quantile(arr,.6), quantile(arr,.8)];
+  const colors = Array.from(arr).map(v => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '#d9d9d9';
+    let i = 0;
+    while (i < b.length && n > b[i]) i++;
+    return palette[i];
+  });
+  return {colors:colors, breaks:b};
+}
+function diverging(arr) {
+  const av = finiteValues(arr).map(Math.abs), lim = Math.max(quantile(av,.95), 1e-9);
+  const colors = Array.from(arr).map(v => {
+    const n = Number(v);
+    if (!Number.isFinite(n)) return '#d9d9d9';
+    if (n <= -lim/2) return DIVERGING[0];
+    if (n < 0) return DIVERGING[1];
+    if (n === 0) return DIVERGING[2];
+    if (n < lim/2) return DIVERGING[3];
+    return DIVERGING[4];
+  });
+  return {colors:colors, lim:lim};
+}
+function setAllInvisible() {
+  parcel_renderer.visible = false;
+  climate_renderer.visible = false;
+  grid_renderer.visible = false;
+  housing_renderer.visible = false;
+  for (const renderer of hotspot_pattern_renderers) renderer.visible = false;
+  kr15.visible = false; kr20.visible = false; kr25.visible = false; kr30.visible = false;
+}
+function legendSequential(label, unit, breaks, palette, decimals) {
+  const lows = [-Infinity, ...breaks], highs = [...breaks, Infinity];
+  let rows = '';
+  for (let i=0; i<palette.length; i++) {
+    let txt = '';
+    if (i === 0) txt = '≤ ' + fmt(highs[i], decimals);
+    else if (i === palette.length - 1) txt = '> ' + fmt(lows[i], decimals);
+    else txt = fmt(lows[i], decimals) + ' – ' + fmt(highs[i], decimals);
+    rows += `<div class='legend-row'><span style='background:${palette[i]}'></span><b>${txt}</b></div>`;
+  }
+  return `<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(label)}</h4>${rows}<div class='legend-unit'>${esc(unit||'')}</div>`;
+}
+function legendHotspot(arr) {
+  const counts = {};
+  HOTSPOT_ORDER.forEach(k => counts[k] = 0);
+  Array.from(arr).forEach(v => counts[v] = (counts[v] || 0) + 1);
+  const rows = HOTSPOT_ORDER.map(k =>
+    `<div class='legend-row hotspot-row'><span class='pattern-swatch' style='${HOTSPOT_PATTERN_STYLES[k]}'></span><b>${esc(k)}</b><em>${fmt(counts[k])}</em></div>`
+  ).join('');
+  return `<div class='panel-eyebrow'>MAP LEGEND</div><h4>Compound-hotspot typology</h4>` +
+    `<div class='pattern-key'><b>Pattern key</b><span><i class='mini-pattern hazard-pattern'></i>Hazard</span><span><i class='mini-pattern growth-pattern'></i>Growth</span><span><i class='mini-pattern svi-pattern'></i>SVI</span></div>` +
+    `<div class='threshold-card'><div class='threshold-kicker'>HIGH = COUNTY 80TH PERCENTILE OR ABOVE</div>` +
+    `<div><b>Extreme precipitation</b><span>≥ 203.603 mm at GMT +2.5°C</span></div>` +
+    `<div><b>Household growth</b><span>≥ 746 households, 2020–2050</span></div>` +
+    `<div><b>Social vulnerability</b><span>SVI ≥ 0.88386</span></div></div>` +
+    `<div class='legend-subtitle'>CONDITION COMBINATION · TRACT COUNT</div>${rows}`;
+}
+function layerInfoHTML(meta) {
+  const bullets = (meta.bullets || []).map(x => `<li>${esc(x)}</li>`).join('');
+  return `<div class='panel-eyebrow'>ABOUT THIS LAYER</div><h4>${esc(titleOf(meta))}</h4><p>${esc(meta.description)}</p><ul class='layer-bullets'>${bullets}</ul>`;
+}
+function mapGuideHTML(meta) {
+  const b = meta.bullets || [];
+  return `<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>${esc(titleOf(meta))}</h3></div>` +
+    `<div class='guide-grid'><div><b>Scope</b><p>${esc(b[0]||meta.description)}</p></div>` +
+    `<div><b>Interpretation</b><p>${esc(b[1]||'Compare values and patterns across Harris County.')}</p></div>` +
+    `<div><b>Planning use</b><p>${esc(b[2]||'Use as an exploratory screening layer and verify with authoritative local data.')}</p></div></div></div>`;
+}
+function actionHTML(meta, id) {
+  if (id === 'hotspot') {
+    return `<div class='action-panel hotspot-action'><div class='action-heading'><span>FROM TYPOLOGY TO PRIORITY</span><h3>Use patterns to distinguish planning needs</h3></div>` +
+      `<div class='action-grid'><div><i>1</i><b>Read each condition</b><p>Diagonal lines indicate hazard, vertical lines indicate growth, and dots indicate SVI.</p></div>` +
+      `<div><i>2</i><b>Compare combinations</b><p>Overlaid patterns show which conditions coincide without relying on color alone.</p></div>` +
+      `<div><i>3</i><b>Coordinate action</b><p>All-three-high tracts warrant integrated climate, housing, and equity review.</p></div></div>` +
+      `<div class='action-note'>The thresholds are transparent screening conventions rather than natural discontinuities in risk.</div></div>`;
+  }
+  return `<div class='action-panel'><div class='action-heading'><span>FROM MAP TO USE</span><h3>A three-step exploratory workflow</h3></div>` +
+    `<div class='action-grid'><div><i>1</i><b>Screen</b><p>Locate tracts, parcels, points, or cells with higher relative values.</p></div>` +
+    `<div><i>2</i><b>Diagnose</b><p>Hover and select features; compare the mapped pattern with related layers.</p></div>` +
+    `<div><i>3</i><b>Validate</b><p>Confirm modeled or projected findings with authoritative local data before action.</p></div></div></div>`;
+}
+function updateHistogram(arr, label, color, decimals) {
+  const a = finiteValues(arr);
+  hist_plot.visible = true;
+  if (!a.length) {
+    hist_plot.visible = false;
+    hist_summary.text = '<p>No numeric distribution is available for this layer.</p>';
+    return;
+  }
+  const min = Math.min(...a), max = Math.max(...a), bins = 12, width = (max-min || 1)/bins;
+  const counts = new Array(bins).fill(0);
+  for (const v of a) {
+    let i = Math.floor((v-min)/width);
+    if (i >= bins) i = bins-1;
+    if (i < 0) i = 0;
+    counts[i]++;
+  }
+  const left = [], right = [];
+  for (let i=0; i<bins; i++) { left.push(min+i*width); right.push(min+(i+1)*width); }
+  hist_source.data = {left:left, right:right, top:counts, color:new Array(bins).fill(color)};
+  hist_source.change.emit();
+  hist_plot.title.text = 'Distribution · ' + fmt(a.length,0) + ' features';
+  hist_xaxis.axis_label = label;
+  hist_summary.text = `<p><strong>Median:</strong> ${fmt(quantile(a,.5),decimals)}<br><strong>Range:</strong> ${fmt(min,decimals)} to ${fmt(max,decimals)}</p>`;
+}
+function sampleHousing() {
+  const mode = housing_select.value, s = housing_sample.data;
+  const sx = (s.sf_x&&s.sf_x.length) ? Array.from(s.sf_x[0]) : [];
+  const sy = (s.sf_y&&s.sf_y.length) ? Array.from(s.sf_y[0]) : [];
+  const mx = (s.mf_x&&s.mf_x.length) ? Array.from(s.mf_x[0]) : [];
+  const my = (s.mf_y&&s.mf_y.length) ? Array.from(s.mf_y[0]) : [];
+  let x=[], y=[], color=[], kind=[];
+  if (mode==='single' || mode==='combined') {
+    x=x.concat(sx); y=y.concat(sy); color=color.concat(new Array(sx.length).fill('#168C95')); kind=kind.concat(new Array(sx.length).fill('Single-family'));
+  }
+  if (mode==='multi' || mode==='combined') {
+    x=x.concat(mx); y=y.concat(my); color=color.concat(new Array(mx.length).fill('#F16913')); kind=kind.concat(new Array(mx.length).fill('Multi-family'));
+  }
+  housing_point_source.data = {x:x,y:y,color:color,kind:kind};
+  housing_point_source.change.emit();
+  point_status.text = `<span class='status-dot'></span>Standalone preview: displaying ${fmt(x.length,0)} points. Start <code>server.py</code> for viewport queries against all source points.`;
+}
+function requestHousingPoints() {
+  if (layer_select.value !== 'housing_points') return;
+  if (window.location.protocol==='file:' || window.location.protocol==='about:' || window.location.protocol==='sandbox:' || !window.fetch) {
+    sampleHousing(); return;
+  }
+  const xmin=map_plot.x_range.start, xmax=map_plot.x_range.end, ymin=map_plot.y_range.start, ymax=map_plot.y_range.end;
+  const url=`/api/housing-points?housing_type=${encodeURIComponent(housing_select.value)}&xmin=${xmin}&xmax=${xmax}&ymin=${ymin}&ymax=${ymax}&max_points=50000`;
+  point_status.text='<span class="status-dot loading"></span>Loading housing-stock points for the current viewport…';
+  fetch(url).then(r=>{if(!r.ok)throw new Error(r.statusText);return r.json();}).then(d=>{
+    housing_point_source.data={x:d.x,y:d.y,color:d.color,kind:d.kind};
+    housing_point_source.change.emit();
+    point_status.text=`<span class='status-dot'></span>Displaying ${fmt(d.n_returned,0)} of ${fmt(d.n_total,0)} source points in the current viewport.`;
+  }).catch(()=>sampleHousing());
+}
+function clearHotspotPatternData(d) {
+  // Pattern overlays have category-specific geometry sources, so resetting the
+  // base tract source requires no per-feature hatch arrays.
+}
+function applyOverlap() {
+  const d=tract_source.data, a=Array.from(d[overlap_a.value]), b=Array.from(d[overlap_b.value]);
+  const q=threshold_slider.value/100, ta=quantile(a,q), tb=quantile(b,q);
+  const colors=[], labels=[], counts=[0,0,0,0];
+  let bothPop=0,bothHH=0,bothJobs=0;
+  const la=FACTOR_LABELS[overlap_a.value]||overlap_a.value, lb=FACTOR_LABELS[overlap_b.value]||overlap_b.value;
+  const da=FACTOR_DECIMALS[overlap_a.value]??2, db=FACTOR_DECIMALS[overlap_b.value]??2;
+  for(let i=0;i<a.length;i++){
+    const ah=Number(a[i])>=ta,bh=Number(b[i])>=tb,cls=(ah?1:0)+(bh?2:0);
+    counts[cls]++; colors.push(BIVARIATE[cls]);
+    const label=cls===0?'Neither high':cls===1?`${la} only`:cls===2?`${lb} only`:'Both high'; labels.push(label);
+    if(cls===3){bothPop+=Number(d.hp_2050[i])||0;bothHH+=Number(d.hh_2050[i])||0;bothJobs+=Number(d.j_2050[i])||0;}
+  }
+  clearHotspotPatternData(d);
+  d.fill_color=colors; d.display_label=new Array(labels.length).fill(`${la} × ${lb}`); d.display_value=labels;
+  tract_source.change.emit();
+  legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>High–high overlap</h4><div class='threshold-card compact'><div class='threshold-kicker'>COUNTYWIDE ${fmt(threshold_slider.value)}TH PERCENTILE</div><div><b>${esc(la)}</b><span>High at ≥ ${fmt(ta,da)}</span></div><div><b>${esc(lb)}</b><span>High at ≥ ${fmt(tb,db)}</span></div></div>`+
+    `<div class='legend-row'><span style='background:${BIVARIATE[0]}'></span><b>Neither high</b><em>${fmt(counts[0])}</em></div>`+
+    `<div class='legend-row'><span style='background:${BIVARIATE[1]}'></span><b>${esc(la)} only</b><em>${fmt(counts[1])}</em></div>`+
+    `<div class='legend-row'><span style='background:${BIVARIATE[2]}'></span><b>${esc(lb)} only</b><em>${fmt(counts[2])}</em></div>`+
+    `<div class='legend-row'><span style='background:${BIVARIATE[3]}'></span><b>Both high</b><em>${fmt(counts[3])}</em></div>`;
+  overlap_summary.text=`<div class='panel-eyebrow'>BOTH HIGH</div><h4>${fmt(counts[3])} census tracts</h4><p><b>${fmt(bothPop)}</b> projected residents<br><b>${fmt(bothHH)}</b> projected households<br><b>${fmt(bothJobs)}</b> projected jobs</p><div class='legend-unit'>Cutoffs: ${esc(la)} ≥ ${fmt(ta,da)} · ${esc(lb)} ≥ ${fmt(tb,db)}</div>`;
+  hist_plot.visible=false;
+  hist_summary.text='<p>Overlap mode compares two factors; numeric cutoffs are shown in the legend.</p>';
+  layer_info.text=`<div class='panel-eyebrow'>ABOUT THIS VIEW</div><h4>Transparent overlap screening</h4><p>Each factor is compared with its own countywide percentile cutoff.</p><ul class='layer-bullets'><li>The darkest class is high on both selected factors.</li><li>Actual cutoff values update whenever the percentile or factor changes.</li><li>This is an exploratory screen, not a causal or regulatory classification.</li></ul>`;
+  map_guide.text=`<div class='map-guide'><div class='guide-heading'><span>READING THE OVERLAP VIEW</span><h3>${esc(la)} × ${esc(lb)}</h3></div><div class='guide-grid'><div><b>Factor A cutoff</b><p>${esc(la)} is high at ${fmt(ta,da)} or above.</p></div><div><b>Factor B cutoff</b><p>${esc(lb)} is high at ${fmt(tb,db)} or above.</p></div><div><b>Interpretation</b><p>Darkest tracts meet both cutoffs and may warrant coordinated review.</p></div></div></div>`;
+  map_actions.text=`<div class='action-panel'><div class='action-heading'><span>USING THE OVERLAP SCREEN</span><h3>Test sensitivity before prioritizing</h3></div><div class='action-grid'><div><i>1</i><b>Compare</b><p>Change factors to examine different forms of co-exposure.</p></div><div><i>2</i><b>Test</b><p>Move the percentile threshold to assess classification sensitivity.</p></div><div><i>3</i><b>Validate</b><p>Review both-high tracts with local evidence and stakeholder knowledge.</p></div></div></div>`;
+  point_status.text='<span class="status-dot"></span>Overlap screening is active. Change factors or the percentile threshold to test alternatives.';
+}
+function updateLayer() {
+  setAllInvisible();
+  const active=overlap_toggle.active;
+  layer_select.disabled=active;
+  overlap_a.visible=active; overlap_b.visible=active; threshold_slider.visible=active; overlap_summary.visible=active;
+  gmt_select.visible=!active&&['pr_tract','pr_points','pr_kriging'].includes(layer_select.value);
+  housing_select.visible=!active&&['housing_density','housing_points'].includes(layer_select.value);
+  const opacity=opacity_slider.value;
+  tract_renderer.glyph.fill_alpha=opacity;
+  tract_renderer.nonselection_glyph.fill_alpha=opacity;
+  tract_renderer.glyph.line_color='#ffffff';
+  tract_renderer.glyph.line_alpha=.75;
+  tract_renderer.glyph.line_width=.55;
+  parcel_renderer.glyph.fill_alpha=opacity;
+  grid_renderer.glyph.fill_alpha=opacity;
+  climate_renderer.glyph.fill_alpha=opacity;
+  housing_renderer.glyph.fill_alpha=Math.min(opacity,.72);
+  kr15.glyph.global_alpha=opacity; kr20.glyph.global_alpha=opacity; kr25.glyph.global_alpha=opacity; kr30.glyph.global_alpha=opacity;
+  tract_renderer.visible=true;
+  if(active){applyOverlap();return;}
+
+  const id=layer_select.value, meta=META[id], d=tract_source.data;
+  let field=meta.field, arr=null, result=null;
+  if(id==='pr_tract'||id==='pr_kriging') field='pr_'+gmt_select.value;
+
+  if(meta.source==='tract'){
+    arr=Array.from(d[field]);
+    if(meta.kind==='seq') result=sequential(arr,meta.palette);
+    else if(meta.kind==='div') result=diverging(arr);
+    else if(meta.kind==='cat_hotspot') result={colors:arr.map(v=>HOTSPOT_FILLS[v]||'#F1F3F4')};
+    d.fill_color=result.colors;
+    d.display_label=new Array(arr.length).fill(titleOf(meta));
+    d.display_value=arr.map(v=>(meta.kind==='cat_hotspot')?String(v):fmt(v,meta.decimals));
+    clearHotspotPatternData(d);
+    // Emit the base-tract update before turning on the pattern renderers. This
+    // keeps the pattern layer visually above the refreshed tract fill in the
+    // standalone canvas renderer.
+    tract_source.change.emit();
+    if(meta.kind==='cat_hotspot'){
+      const hatchOpacity=Math.max(.56,Math.min(.84,opacity*.90));
+      for (const renderer of hotspot_pattern_renderers) {
+        renderer.glyph.hatch_alpha=hatchOpacity;
+        renderer.visible=true;
+      }
+      tract_renderer.glyph.line_color='#87959B';
+      tract_renderer.glyph.line_alpha=.62;
+      tract_renderer.glyph.line_width=.50;
+      tract_renderer.selection_glyph.fill_alpha=.10;
+      tract_renderer.selection_glyph.line_color='#F2B134';
+      tract_renderer.selection_glyph.line_width=3.0;
+    } else {
+      tract_renderer.selection_glyph.fill_alpha=.90;
+      tract_renderer.selection_glyph.line_color='#111111';
+      tract_renderer.selection_glyph.line_width=2.2;
+    }
+    if(meta.kind==='seq'){
+      legend_div.text=legendSequential(titleOf(meta),meta.unit,result.breaks,meta.palette,meta.decimals);
+      updateHistogram(arr,meta.short,meta.palette[3],meta.decimals);
+    }else if(meta.kind==='div'){
+      legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(titleOf(meta))}</h4>`+
+        `<div class='legend-row'><span style='background:${DIVERGING[0]}'></span><b>Large decrease</b></div>`+
+        `<div class='legend-row'><span style='background:${DIVERGING[1]}'></span><b>Decrease</b></div>`+
+        `<div class='legend-row'><span style='background:${DIVERGING[2]}'></span><b>Near zero</b></div>`+
+        `<div class='legend-row'><span style='background:${DIVERGING[3]}'></span><b>Increase</b></div>`+
+        `<div class='legend-row'><span style='background:${DIVERGING[4]}'></span><b>Large increase</b></div>`+
+        `<div class='legend-unit'>${esc(meta.unit||'')}</div>`;
+      updateHistogram(arr,meta.short,DIVERGING[4],meta.decimals);
+    }else{
+      legend_div.text=legendHotspot(arr);
+      hist_plot.visible=false;
+      hist_summary.text='<p><strong>Pattern-based typology:</strong> diagonal lines denote precipitation hazard, vertical lines denote household growth, and dots denote social vulnerability. Combined patterns preserve all eight combinations.</p>';
+    }
+  }else if(meta.source==='parcel'){
+    parcel_renderer.visible=true;
+    tract_renderer.glyph.fill_alpha=.01; tract_renderer.nonselection_glyph.fill_alpha=.01; tract_renderer.glyph.line_alpha=.30;
+    const p=parcel_source.data; arr=Array.from(p[field]);
+    if(meta.kind==='seq'){
+      result=sequential(arr,meta.palette); p.fill_color=result.colors; p.display_value=arr.map(v=>fmt(v,meta.decimals));
+      legend_div.text=legendSequential(titleOf(meta),meta.unit,result.breaks,meta.palette,meta.decimals);
+      updateHistogram(arr,meta.short,meta.palette[3],meta.decimals);
+    }else{
+      p.fill_color=arr.map(v=>LAND_COLORS[v]||'#969696'); p.display_value=arr.map(String);
+      const cats={}; arr.forEach(v=>cats[v]=(cats[v]||0)+1);
+      legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>${esc(titleOf(meta))}</h4>`+
+        Object.entries(cats).sort((a,b)=>b[1]-a[1]).slice(0,8).map(([k,n])=>`<div class='legend-row'><span style='background:${LAND_COLORS[k]||'#969696'}'></span><b>${esc(k)}</b><em>${fmt(n)}</em></div>`).join('');
+      hist_plot.visible=false; hist_summary.text='<p>Categorical parcel layer; feature counts are shown in the legend.</p>';
+    }
+    parcel_source.change.emit();
+  }else if(meta.source==='grid'){
+    grid_renderer.visible=true;
+    tract_renderer.glyph.fill_alpha=.01; tract_renderer.nonselection_glyph.fill_alpha=.01; tract_renderer.glyph.line_alpha=.28;
+    const gd=grid_source.data;
+    field=housing_select.value==='single'?'sf_count':housing_select.value==='multi'?'mf_count':'total_count';
+    arr=Array.from(gd[field]); result=sequential(arr,meta.palette); gd.fill_color=result.colors; gd.display_value=arr.map(v=>fmt(v,0));
+    grid_source.change.emit();
+    legend_div.text=legendSequential((housing_select.value==='single'?'Single-family':housing_select.value==='multi'?'Multi-family':'Combined')+' housing-stock density','records per 1 km cell',result.breaks,meta.palette,0);
+    updateHistogram(arr,'Housing records per cell',meta.palette[3],0);
+  }else if(meta.source==='climate_points'){
+    climate_renderer.visible=true;
+    tract_renderer.glyph.fill_alpha=.01; tract_renderer.nonselection_glyph.fill_alpha=.01; tract_renderer.glyph.line_alpha=.30;
+    const cm=climate_source.data,g=Number(gmt_select.value)/10,x=[],y=[],v=[];
+    for(let i=0;i<cm.gmt.length;i++) if(Number(cm.gmt[i])===g){x.push(cm.x[i]);y.push(cm.y[i]);v.push(cm.precip[i]);}
+    result=sequential(v,meta.palette);
+    climate_display_source.data={x:x,y:y,gmt:new Array(x.length).fill(g),precip:v,color:result.colors}; climate_display_source.change.emit();
+    legend_div.text=legendSequential(`GMT ${g.toFixed(1)}°C climate points`,meta.unit,result.breaks,meta.palette,meta.decimals);
+    updateHistogram(v,'3-day precipitation (mm)',meta.palette[3],1);
+  }else if(meta.source==='kriging'){
+    tract_renderer.glyph.fill_alpha=0; tract_renderer.nonselection_glyph.fill_alpha=0; tract_renderer.glyph.line_alpha=.50; tract_renderer.glyph.line_width=.40;
+    const code=gmt_select.value; ({'15':kr15,'20':kr20,'25':kr25,'30':kr30})[code].visible=true;
+    const arr2=Array.from(d['pr_'+code]),r=sequential(arr2,meta.palette);
+    legend_div.text=legendSequential(`GMT ${(Number(code)/10).toFixed(1)}°C kriging surface`,'mm',r.breaks,meta.palette,1);
+    updateHistogram(arr2,'Tract precipitation (mm)',meta.palette[3],1);
+  }else if(meta.source==='housing_points'){
+    housing_renderer.visible=true;
+    tract_renderer.glyph.fill_alpha=.01; tract_renderer.nonselection_glyph.fill_alpha=.01; tract_renderer.glyph.line_alpha=.24;
+    legend_div.text=`<div class='panel-eyebrow'>MAP LEGEND</div><h4>Housing-stock locations</h4><div class='legend-row'><span style='background:#168C95'></span><b>Single-family</b></div><div class='legend-row'><span style='background:#F16913'></span><b>Multi-family</b></div>`;
+    hist_plot.visible=false; hist_summary.text='<p>Point display is optimized by viewport. The density layer uses every uploaded record.</p>';
+    requestHousingPoints();
+  }
+  layer_info.text=layerInfoHTML(meta);
+  map_guide.text=mapGuideHTML(meta);
+  map_actions.text=actionHTML(meta,id);
+  if(meta.source!=='housing_points') point_status.text='<span class="status-dot"></span>Click a census tract to update its profile, or use the ZIP-code locator to zoom to a familiar area.';
+}
 updateLayer();
 """
     callback_code = (callback_code
@@ -551,7 +947,8 @@ updateLayer();
         .replace("__SEQ_BLUE__", json.dumps(SEQ_BLUE))
         .replace("__DIVERGING__", json.dumps(DIVERGING))
         .replace("__BIVARIATE__", json.dumps(BIVARIATE))
-        .replace("__HOTSPOT_COLORS__", json.dumps(HOTSPOT_COMBO_COLORS))
+        .replace("__HOTSPOT_FILLS__", json.dumps(HOTSPOT_NEUTRAL_FILLS))
+        .replace("__HOTSPOT_PATTERN_STYLES__", json.dumps(HOTSPOT_PATTERN_STYLES))
         .replace("__HOTSPOT_ORDER__", json.dumps(HOTSPOT_ORDER)))
 
     callback_args = dict(
@@ -560,6 +957,7 @@ updateLayer();
         housing_sample=housing_sample_source, housing_point_source=housing_point_source,
         tract_renderer=tract_renderer, parcel_renderer=parcel_renderer, climate_renderer=climate_renderer,
         grid_renderer=grid_renderer, housing_renderer=housing_point_renderer,
+        hotspot_pattern_renderers=hotspot_pattern_renderers,
         kr15=kriging_renderers["15"], kr20=kriging_renderers["20"], kr25=kriging_renderers["25"], kr30=kriging_renderers["30"],
         layer_select=layer_select, gmt_select=gmt_select, housing_select=housing_select,
         opacity_slider=opacity_slider, overlap_toggle=overlap_toggle, overlap_a=overlap_a,
@@ -602,6 +1000,34 @@ const q=String(text.value||'').trim(),d=source.data;let idx=-1;for(let i=0;i<d.G
 """)
     search_button.js_on_click(search_callback)
     search_input.js_on_event("value_submit", search_callback)
+
+    zip_search_callback = CustomJS(args=dict(
+        source=zipcode_source, selected_source=selected_zip_source,
+        text=zip_search_input, status=zip_search_status,
+        xr=map_plot.x_range, yr=map_plot.y_range,
+    ), code=r"""
+const q=String(text.value||'').trim();
+if(!/^\d{5}$/.test(q)){status.text='<span class="error-text">Enter a five-digit ZIP code.</span>';return;}
+const d=source.data;let idx=-1;
+for(let i=0;i<d.ZIP.length;i++){if(String(d.ZIP[i]).padStart(5,'0')===q){idx=i;break;}}
+if(idx<0){status.text='<span class="error-text">No matching Harris County ZIP boundary was found.</span>';return;}
+selected_source.data={xs:[d.xs[idx]],ys:[d.ys[idx]],ZIP:[d.ZIP[idx]],POSTAL:[d.POSTAL[idx]],STATE:[d.STATE[idx]],ZIP_TYPE:[d.ZIP_TYPE[idx]]};
+selected_source.change.emit();
+const px=Math.max((d.bbox_maxx[idx]-d.bbox_minx[idx])*.22,1800),py=Math.max((d.bbox_maxy[idx]-d.bbox_miny[idx])*.22,1800);
+xr.start=d.bbox_minx[idx]-px;xr.end=d.bbox_maxx[idx]+px;yr.start=d.bbox_miny[idx]-py;yr.end=d.bbox_maxy[idx]+py;
+const postal=d.POSTAL[idx]?` · ${d.POSTAL[idx]}`:'';
+status.text=`<span class="success-text"><b>ZIP ${q}</b>${postal} located.</span><br><span class="locator-note">Boundary shown for navigation; dashboard indicators remain at their source geographies.</span>`;
+""")
+    zip_search_button.js_on_click(zip_search_callback)
+    zip_search_input.js_on_event("value_submit", zip_search_callback)
+
+    show_all_zip_toggle.js_on_change("active", CustomJS(args=dict(
+        toggle=show_all_zip_toggle, renderer=all_zip_renderer,
+    ), code=r"""
+renderer.visible=toggle.active;
+toggle.label=toggle.active?'Hide all ZIP-code boundaries':'Show all ZIP-code boundaries';
+"""))
+
     reset_button.js_on_click(CustomJS(args=dict(xr=map_plot.x_range, yr=map_plot.y_range), code=f"xr.start={minx-padx};xr.end={maxx+padx};yr.start={miny-pady};yr.end={maxy+pady};"))
 
     header = Div(text=f"""
@@ -624,7 +1050,7 @@ const q=String(text.value||'').trim(),d=source.data;let idx=-1;for(let i=0;i<d.G
         <summary><span><b>About this dashboard</b><small>Overview, functions, audiences, and practical applications</small></span><i>Expand / collapse</i></summary>
         <div class='overview-grid'>
           <article><div class='overview-number'>01</div><h3>Dashboard Overview</h3><p>The Climate-Housing Exposure Index Dashboard is an interactive web-based platform for Harris County, Texas. It visualizes how future precipitation extremes intersect with housing, population, employment, social vulnerability, and land-use change.</p></article>
-          <article><div class='overview-number'>02</div><h3>Key Functions</h3><p>Explore extreme precipitation under 1.5°C, 2.0°C, 2.5°C, and 3.0°C warming scenarios; compare 2020 and 2050 conditions; and examine CHEI, housing stocks, land use, growth, and compound hotspots.</p></article>
+          <article><div class='overview-number'>02</div><h3>Key Functions</h3><p>Explore extreme precipitation under 1.5°C, 2.0°C, 2.5°C, and 3.0°C warming scenarios; compare 2020 and 2050 conditions; examine CHEI, housing, land use, growth, and patterned compound hotspots; and locate familiar areas by ZIP code.</p></article>
           <article><div class='overview-number'>03</div><h3>Potential Audiences</h3><p>Designed for researchers, planners, local governments, housing and community-development agencies, emergency managers, policymakers, nonprofit organizations, and community stakeholders.</p></article>
           <article><div class='overview-number'>04</div><h3>Practical Applications</h3><p>Supports climate adaptation, housing resilience, growth management, infrastructure investment, vulnerability assessment, and environmental-justice research by highlighting areas of overlapping future pressures.</p></article>
         </div>
@@ -647,14 +1073,17 @@ const q=String(text.value||'').trim(),d=source.data;let idx=-1;for(let i=0;i<d.G
         Div(text="<div class='section-title top-space'><span>02</span> Screen overlap</div>", width=CONTROL_CONTENT_WIDTH),
         overlap_toggle, overlap_a, overlap_b, threshold_slider, overlap_summary,
         Div(text="<div class='section-title top-space'><span>03</span> Locate a tract</div>", width=CONTROL_CONTENT_WIDTH),
-        row(search_input, search_button, width=CONTROL_CONTENT_WIDTH), search_status, reset_button,
+        row(search_input, search_button, width=CONTROL_CONTENT_WIDTH), search_status,
+        Div(text="<div class='section-title top-space'><span>04</span> Locate a ZIP code</div>", width=CONTROL_CONTENT_WIDTH),
+        row(zip_search_input, zip_search_button, width=CONTROL_CONTENT_WIDTH),
+        zip_search_status, show_all_zip_toggle, reset_button,
         legend_div, layer_info, hist_plot, hist_summary,
         width=CONTROL_COLUMN_WIDTH, css_classes=["controls-column"],
     )
     map_column = column(map_plot, point_status, map_guide, map_actions, width=MAP_COLUMN_WIDTH, css_classes=["map-column"])
     insights = column(
         selected_div, climate_profile, profile_plot,
-        Div(text="<div class='insight-note'><b>Interpretation reminder</b><p>This dashboard supports screening and exploration. Modeled and projected values should be validated with authoritative local data before decisions are made.</p><ul><li>Hover for feature values.</li><li>Click a tract for its profile.</li><li>Use overlap mode to test co-exposure.</li></ul></div>", width=INSIGHT_CONTENT_WIDTH),
+        Div(text="<div class='insight-note'><b>Interpretation reminder</b><p>This dashboard supports screening and exploration. Modeled and projected values should be validated with authoritative local data before decisions are made.</p><ul><li>Hover for feature values.</li><li>Click a tract for its profile.</li><li>Locate familiar areas by ZIP code.</li><li>Use overlap mode to test co-exposure.</li></ul></div>", width=INSIGHT_CONTENT_WIDTH),
         width=INSIGHTS_COLUMN_WIDTH, css_classes=["insights-column"],
     )
     explore_row = row(controls, map_column, insights, width=PAGE_WIDTH, css_classes=["explore-row"])
@@ -672,9 +1101,10 @@ const q=String(text.value||'').trim(),d=source.data;let idx=-1;for(let i=0;i<d.G
         <section><h3>Climate precipitation</h3><p>Four GMT thresholds—1.5°C, 2.0°C, 2.5°C, and 3.0°C relative to 1850–1899—are available as model points and tract aggregations. The uploaded GDB did not expose the four named kriging rasters to the open-source FileGDB reader, so the preprocessing script derives ordinary-kriging display surfaces and records fitted semivariogram parameters.</p></section>
         <section><h3>Exposure and growth</h3><p>Tract geometry is consolidated once and joined to CHEI, SVI, precipitation, population, household, employment, and compound-hotspot attributes. Parcel housing-unit changes are spatially aggregated to tracts for overlap analysis.</p></section>
         <section><h3>Housing-stock performance</h3><p>The package retains all {counts_report['single_family_points']:,} single-family and {counts_report['multi_family_points']:,} multi-family source points in sorted NumPy arrays. The full server returns viewport-filtered points; the standalone HTML uses a complete 1 km density grid and representative point sample.</p></section>
-        <section><h3>Compound hotspots and overlap</h3><p>The compound-hotspot typology is noncompensatory and retains all eight combinations generated by three countywide 80th-percentile conditions: GMT +2.5°C precipitation ≥ 203.603 mm, household growth ≥ 746, and SVI ≥ 0.88386. A separate bivariate tool lets users select two factors and test alternative percentile cutoffs.</p></section>
+        <section><h3>Geographic location</h3><p>The revised geodatabase includes {counts_report['zip_codes']:,} Harris County ZIP-code boundaries. Users can search for a five-digit ZIP code, zoom to its boundary, and optionally display all ZIP boundaries. These boundaries are used only for navigation; analytical indicators remain at their original geographies.</p></section>
+        <section><h3>Compound hotspots and overlap</h3><p>The compound-hotspot typology is noncompensatory and retains all eight combinations generated by three countywide 80th-percentile conditions: GMT +2.5°C precipitation ≥ 203.603 mm, household growth ≥ 746, and SVI ≥ 0.88386. Diagonal lines represent hazard, vertical lines represent growth, and dots represent social vulnerability, allowing combinations to be interpreted without relying on color alone. A separate bivariate tool lets users select two factors and test alternative percentile cutoffs.</p></section>
       </div>
-      <div class='notice'><b>Data audit.</b> The geodatabase contains {report['available_vector_layers']} exposed vector layers. The two CHEI 2050 feature classes have identical index values and are consolidated. The supplied tract precipitation inventory uses “extreme_precipi,” whereas the actual GDB layer names use “extreme_precip.”</div>
+      <div class='notice'><b>Data audit.</b> The geodatabase contains {report['available_vector_layers']} exposed vector layers, including <code>Harris_County_Zipcodes</code>. ZIP boundaries support location and orientation only; no ZIP-level aggregation is created. The two CHEI 2050 feature classes have identical index values and are consolidated. The supplied tract precipitation inventory uses “extreme_precipi,” whereas the actual GDB layer names use “extreme_precip.”</div>
       <h3>Uploaded geodatabase inventory</h3>
       <div class='table-wrap'><table class='data-table'><thead><tr><th>Layer</th><th>Features</th><th>Geometry</th></tr></thead><tbody>{inventory_rows}</tbody></table></div>
       <h3>Source organizations</h3>
@@ -723,7 +1153,7 @@ const q=String(text.value||'').trim(),d=source.data;let idx=-1;for(let i=0;i<d.G
     :host(.kpi-wrapper),.kpi-wrapper{padding:18px 28px 9px;background:#f4f7f9}.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:15px}.kpi-card{background:#fff;border:1px solid #dae4e9;border-top:4px solid var(--teal);padding:16px 18px;display:flex;gap:13px;min-height:105px;box-shadow:0 2px 8px rgba(23,50,77,.05)}.kpi-card.alert{border-top-color:#c9463d}.kpi-icon{width:39px;height:39px;background:#e4f3f3;color:var(--teal);border-radius:50%;display:grid;place-items:center;font-weight:800;flex:0 0 auto}.kpi-card.alert .kpi-icon{background:#f9e5e2;color:#b2182b}.kpi-card b{display:block;font-size:25px;color:var(--navy);line-height:1}.kpi-card span{display:block;font-size:13px;font-weight:700;margin-top:7px}.kpi-card small{display:block;color:var(--muted);font-size:11px;margin-top:4px}
     :host(.explore-layout),.explore-layout{width:1760px!important;background:#f4f7f9}:host(.explore-row),.explore-row{width:1760px!important;align-items:flex-start!important}
     :host(.controls-column),:host(.map-column),:host(.insights-column),.controls-column,.map-column,.insights-column{padding:14px 10px 22px;background:#f4f7f9;align-self:flex-start!important}:host(.controls-column),.controls-column{padding-left:24px}:host(.insights-column),.insights-column{padding-right:24px}:host(.map-column),.map-column{padding-left:5px;padding-right:5px}.section-title{font-size:12px;text-transform:uppercase;letter-spacing:.9px;color:var(--navy);font-weight:800;border-bottom:1px solid #dbe4e9;padding:5px 0 9px;margin-bottom:8px}.section-title span{background:var(--teal);color:#fff;border-radius:12px;padding:3px 7px;margin-right:7px}.top-space{margin-top:10px}
-    .chei-panel{background:#fff;border:1px solid #d8e2e8;border-left:4px solid var(--teal);padding:14px 16px;margin-top:9px;box-shadow:0 2px 6px rgba(23,50,77,.035);overflow:visible!important}.chei-panel h4{font-size:13px;line-height:1.35;margin:0 0 10px;color:var(--navy)}.chei-panel p{font-size:11.5px;line-height:1.5;margin:6px 0;color:#465a68}.legend-row{display:grid;grid-template-columns:27px minmax(0,1fr) auto;align-items:center;column-gap:9px;font-size:11px;margin:6px 0;min-height:15px}.legend-row span{width:27px;height:14px;border:1px solid rgba(0,0,0,.13);display:block}.legend-row b{font-weight:700;line-height:1.25;min-width:0}.legend-row em{font-style:normal;color:#627581;font-weight:700}.legend-unit{font-size:10px;color:var(--muted);margin-top:9px;text-transform:uppercase;letter-spacing:.7px}.legend-subtitle{font-size:9.5px;color:#607786;font-weight:800;letter-spacing:.75px;margin:14px 0 7px}.threshold-card{background:#f1f6f7;border:1px solid #d4e3e6;padding:10px 11px;margin:7px 0 12px}.threshold-card>div:not(.threshold-kicker){display:grid;grid-template-columns:1fr;gap:2px;padding:6px 0;border-bottom:1px solid #dce7ea}.threshold-card>div:last-child{border-bottom:0}.threshold-card b{font-size:10.5px;color:var(--navy)}.threshold-card span{font-size:10.5px;color:#4f6674}.threshold-kicker{font-size:9px;font-weight:800;letter-spacing:.65px;color:#087d88;margin-bottom:3px}.threshold-card.compact{margin-bottom:10px}.hotspot-row{margin:5px 0}.layer-bullets{margin:10px 0 2px;padding-left:17px;color:#405664}.layer-bullets li{font-size:11px;line-height:1.45;margin:5px 0}.overlap-panel{border-left-color:#354a8c}.hist-summary{background:#fff;border:1px solid #d8e2e8;border-top:0;padding:5px 10px 7px}.hist-summary p{font-size:10.5px;line-height:1.45;color:var(--muted);margin:3px 0}.search-status{font-size:11px;padding:3px 1px}.success-text{color:#168c60}.error-text{color:#b2182b}
+    .chei-panel{background:#fff;border:1px solid #d8e2e8;border-left:4px solid var(--teal);padding:14px 16px;margin-top:9px;box-shadow:0 2px 6px rgba(23,50,77,.035);overflow:visible!important}.chei-panel h4{font-size:13px;line-height:1.35;margin:0 0 10px;color:var(--navy)}.chei-panel p{font-size:11.5px;line-height:1.5;margin:6px 0;color:#465a68}.legend-row{display:grid;grid-template-columns:27px minmax(0,1fr) auto;align-items:center;column-gap:9px;font-size:11px;margin:6px 0;min-height:15px}.legend-row span{width:27px;height:14px;border:1px solid rgba(0,0,0,.13);display:block}.legend-row b{font-weight:700;line-height:1.25;min-width:0}.legend-row em{font-style:normal;color:#627581;font-weight:700}.legend-unit{font-size:10px;color:var(--muted);margin-top:9px;text-transform:uppercase;letter-spacing:.7px}.legend-subtitle{font-size:9.5px;color:#607786;font-weight:800;letter-spacing:.75px;margin:14px 0 7px}.threshold-card{background:#f1f6f7;border:1px solid #d4e3e6;padding:10px 11px;margin:7px 0 12px}.threshold-card>div:not(.threshold-kicker){display:grid;grid-template-columns:1fr;gap:2px;padding:6px 0;border-bottom:1px solid #dce7ea}.threshold-card>div:last-child{border-bottom:0}.threshold-card b{font-size:10.5px;color:var(--navy)}.threshold-card span{font-size:10.5px;color:#4f6674}.threshold-kicker{font-size:9px;font-weight:800;letter-spacing:.65px;color:#087d88;margin-bottom:3px}.threshold-card.compact{margin-bottom:10px}.hotspot-row{grid-template-columns:36px minmax(0,1fr) auto;margin:6px 0;min-height:20px}.hotspot-row .pattern-swatch{width:36px;height:19px;border:1px solid #9aa8ae;background-repeat:repeat}.pattern-key{display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px;background:#f7f9fa;border:1px solid #dce5e9;padding:8px 9px;margin:7px 0 10px}.pattern-key>b{grid-column:1/4;font-size:9px;text-transform:uppercase;letter-spacing:.65px;color:#55707d}.pattern-key>span{display:flex;align-items:center;gap:5px;font-size:9.5px;font-weight:700;color:#334c5a}.mini-pattern{width:22px;height:14px;border:1px solid #9aa8ae;background-color:#eef2f3;display:inline-block;flex:0 0 auto}.hazard-pattern{background-image:repeating-linear-gradient(135deg,transparent 0,transparent 4px,#263b4a 4px,#263b4a 5.3px)}.growth-pattern{background-image:repeating-linear-gradient(90deg,transparent 0,transparent 4px,#263b4a 4px,#263b4a 5.3px)}.svi-pattern{background-image:radial-gradient(circle at 2px 2px,#263b4a 1px,transparent 1.2px);background-size:6px 6px}.layer-bullets{margin:10px 0 2px;padding-left:17px;color:#405664}.layer-bullets li{font-size:11px;line-height:1.45;margin:5px 0}.overlap-panel{border-left-color:#354a8c}.hist-summary{background:#fff;border:1px solid #d8e2e8;border-top:0;padding:5px 10px 7px}.hist-summary p{font-size:10.5px;line-height:1.45;color:var(--muted);margin:3px 0}.search-status{font-size:11px;padding:3px 1px;line-height:1.4}.zip-search-status{min-height:42px}.locator-note{font-size:10px;color:#6a7d87}.success-text{color:#168c60}.error-text{color:#b2182b}
     .map-status{background:#fff;border:1px solid #d8e2e8;padding:10px 14px;font-size:11px;color:#526673;margin-top:5px}.status-dot{display:inline-block;width:8px;height:8px;background:#2ca25f;border-radius:50%;margin-right:7px}.status-dot.loading{background:var(--gold)}code{font-family:Consolas,monospace;background:#eef2f4;padding:1px 4px;border-radius:3px}.map-guide-wrapper{margin-top:8px}.map-guide{background:#fff;border:1px solid #d8e2e8;border-top:4px solid var(--teal);padding:17px 19px 18px;box-shadow:0 2px 7px rgba(23,50,77,.04)}.guide-heading{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #e1e8ec;padding-bottom:10px;margin-bottom:12px}.guide-heading span{font-size:9.5px;letter-spacing:1.2px;font-weight:800;color:var(--teal)}.guide-heading h3{font-size:16px;color:var(--navy);margin:0}.guide-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.guide-grid>div{background:#f3f7f8;padding:11px 12px;min-height:78px}.guide-grid b{font-size:11px;color:var(--navy)}.guide-grid p{font-size:10.5px;line-height:1.45;color:#4d6370;margin:5px 0 0}
     .map-actions-wrapper{margin-top:8px}.action-panel{background:#fff;border:1px solid #d8e2e8;border-top:4px solid var(--gold);padding:16px 19px 17px;box-shadow:0 2px 7px rgba(23,50,77,.04)}.action-heading{display:flex;align-items:baseline;gap:14px;border-bottom:1px solid #e1e8ec;padding-bottom:9px;margin-bottom:11px}.action-heading span{font-size:9.5px;letter-spacing:1.2px;font-weight:800;color:#a56f05}.action-heading h3{font-size:15px;color:var(--navy);margin:0}.action-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.action-grid>div{position:relative;background:#f7f6f1;padding:11px 12px 11px 42px;min-height:80px}.action-grid i{position:absolute;left:11px;top:11px;width:22px;height:22px;border-radius:50%;background:var(--gold);color:var(--deep);font-style:normal;font-weight:800;font-size:11px;display:grid;place-items:center}.action-grid b{font-size:11px;color:var(--navy)}.action-grid p{font-size:10.5px;line-height:1.45;color:#4d6370;margin:5px 0 0}.hotspot-action{border-top-color:#8f1725}.hotspot-action .action-heading span{color:#8f1725}.hotspot-action .action-grid i{background:#8f1725;color:#fff}.action-note{font-size:10px;color:#5b6d77;background:#f2f5f6;margin-top:10px;padding:7px 9px;border-left:3px solid #8f1725}
     .selected-panel{border-left-color:var(--gold);padding:17px 18px}.selected-panel h3{font-size:17px;margin:0 0 13px;color:var(--navy)}.selected-panel h3 span{font-size:11px;color:var(--muted);font-weight:500;display:block;margin-top:3px}.selected-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.selected-grid>div{background:#f2f6f8;padding:9px}.selected-grid b{display:block;color:var(--navy);font-size:17px}.selected-grid span{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.4px}.selected-thresholds{display:flex;gap:5px;flex-wrap:wrap;margin-top:10px}.selected-thresholds span{font-size:9px;text-transform:uppercase;letter-spacing:.35px;border-radius:11px;padding:4px 7px;border:1px solid #cfdadd;color:#71818a;background:#f4f6f7}.selected-thresholds span.on{color:#fff;background:#8f1725;border-color:#8f1725}.insight-note{background:#eaf4f4;border:1px solid #c4dfdf;padding:15px;font-size:11.5px;line-height:1.45;color:#35545b}.insight-note p{margin:5px 0 7px}.insight-note ul{margin:5px 0 0;padding-left:17px}.insight-note li{margin:3px 0}

@@ -24,8 +24,8 @@ LEGACY_DASHBOARD = ROOT / "climate_housing_exposure_index_dashboard.html"
 
 app = FastAPI(
     title="Climate Housing Exposure Index Dashboard",
-    description="Harris County dashboard and viewport housing-point API",
-    version="1.0.0",
+    description="Harris County climate-housing dashboard with ZIP navigation, patterned hotspots, and viewport housing-point API",
+    version="1.1.0",
 )
 app.mount("/data", StaticFiles(directory=DATA), name="data")
 

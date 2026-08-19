@@ -1,40 +1,60 @@
-CLIMATE-HOUSING EXPOSURE INDEX DASHBOARD — FINAL RELEASE MANIFEST
+Climate-Housing Exposure Index Dashboard — Complete Deployment Package Manifest
+Generated: 2026-08-19 UTC
 
-Package type: Complete deployment package
-Generated: 2026-08-11 02:13 UTC
-Root folder: Climate_Housing_Exposure_Index_Dashboard
-Files before checksum list: 50
-Uncompressed size before checksum list: 60.5 MB
+Purpose: GitHub storage, local execution, full-data FastAPI operation, or container deployment.
+Includes all prepared data, both data-self-contained HTML entry files, source code, documentation, and screenshots.
+Verified scale: 31 exposed GDB layers, 1,115 tracts, 155 ZIP boundaries, 20,344 changed parcels, 1,093,063 single-family records, and 11,572 multi-family records.
 
-Validation status
-- Revised dashboard validation passed before packaging.
-- The standalone entry file is index.html.
-- The compound-hotspot implementation retains all eight factor combinations and the documented screening thresholds.
-- Archive integrity is tested after ZIP creation.
+Files: 49
+Uncompressed file bytes: 64,863,293
 
-Contents
-- .nojekyll
-- ATTRIBUTION_AND_DATA_NOTES.md
-- Dockerfile
-- GITHUB_PAGES_DEPLOYMENT.md
-- PACKAGE_MANIFEST.txt
-- README.md
-- REVISION_NOTES.md
-- TERMS_OF_USE.md
-- build_dashboard.py
-- climate_housing_exposure_index_dashboard.html
-- data/ (24 files)
-- docs/ (1 files)
-- environment.yml
-- index.html
-- preprocess_data.py
-- render.yaml
-- requirements.txt
-- run_dashboard.bat
-- run_dashboard.sh
-- screenshots/ (4 files)
-- scripts/ (2 files)
-- server.py
-
-Package notes
-Contains the revised GitHub Pages entry file, compatibility HTML, all source code, processed web data, full housing-point arrays, documentation, screenshots, FastAPI application, Docker/Render configuration, and validation utilities. The original source File Geodatabase is not duplicated in this package.
+File inventory:
+           0  .nojekyll
+       1,931  ATTRIBUTION_AND_DATA_NOTES.md
+         259  Dockerfile
+       1,979  GITHUB_PAGES_DEPLOYMENT.md
+      12,971  README.md
+       2,743  REVISION_NOTES.md
+       1,384  TERMS_OF_USE.md
+     103,680  build_dashboard.py
+  13,054,281  climate_housing_exposure_index_dashboard.html
+      54,185  data/climate_points.csv
+      22,017  data/county_web.geojson
+       1,404  data/data_quality_report.json
+       2,045  data/gdb_layer_inventory.csv
+   1,921,588  data/housing_grid.geojson
+      75,632  data/kriging_gmt_15.png
+     149,728  data/kriging_gmt_15_rgba.npy
+     299,328  data/kriging_gmt_15_values.npy
+      77,338  data/kriging_gmt_20.png
+     149,728  data/kriging_gmt_20_rgba.npy
+     299,328  data/kriging_gmt_20_values.npy
+      79,010  data/kriging_gmt_25.png
+     149,728  data/kriging_gmt_25_rgba.npy
+     299,328  data/kriging_gmt_25_values.npy
+      77,462  data/kriging_gmt_30.png
+     149,728  data/kriging_gmt_30_rgba.npy
+     299,328  data/kriging_gmt_30_values.npy
+       1,413  data/kriging_metadata.json
+     383,426  data/mf_points.csv
+     185,280  data/mf_points_sorted.npy
+  10,649,440  data/parcels_web.geojson
+  17,489,136  data/sf_points_sorted.npy
+     994,183  data/sf_sample.csv
+   1,921,249  data/tracts_web.geojson
+     987,907  data/zipcodes_web.geojson
+     429,092  docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.docx
+         289  environment.yml
+  13,054,281  index.html
+      18,416  preprocess_data.py
+         187  render.yaml
+         168  requirements.txt
+          47  run_dashboard.bat
+          76  run_dashboard.sh
+     411,330  screenshots/compound_hotspot_patterns.png
+     388,723  screenshots/dashboard_overview.png
+     300,578  screenshots/hotspot_legend_and_guidance.png
+     315,702  screenshots/zip_locator_77007.png
+      34,712  scripts/create_reproduction_guide.py
+       6,437  scripts/validate_dashboard.py
+       5,088  server.py
