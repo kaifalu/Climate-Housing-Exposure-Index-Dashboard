@@ -379,7 +379,7 @@ def build() -> None:
 
     doc.add_paragraph()
     add_key_value_table(doc, [
-        ("Standalone access", "index.html (GitHub Pages entry; compatibility HTML also included)"),
+        ("Standalone access", "index.html (data-self-contained GitHub Pages entry; identical compatibility HTML included)"),
         ("Full-data application", "python server.py  →  http://127.0.0.1:8050"),
         ("Rebuild scripts", "preprocess_data.py and build_dashboard.py"),
         ("Contact", "Kaifa Lu / CECREH / Kaifa.Lu@ttu.edu"),
@@ -401,8 +401,8 @@ def build() -> None:
         p.paragraph_format.space_after = Pt(4)
         shape = p.add_run().add_picture(str(SCREENSHOT), width=Inches(7.05))
         shape._inline.docPr.set("title", "Climate Housing Exposure Index dashboard overview")
-        shape._inline.docPr.set("descr", "Dashboard screenshot showing Harris County tract mapping, layer controls, key indicators, legends, and selected-tract charts.")
-        cap = doc.add_paragraph("Figure 1. Standalone dashboard overview: map, layer controls, key indicators, and selected-tract profiles.")
+        shape._inline.docPr.set("descr", "Dashboard screenshot showing the Harris County map, layer controls, ZIP-code locator, key indicators, legends, and selected-tract charts.")
+        cap = doc.add_paragraph("Figure 1. Data-self-contained dashboard overview with analytical layers, key indicators, and location controls.")
         cap.alignment = WD_ALIGN_PARAGRAPH.CENTER
         cap.runs[0].font.name = "Liberation Sans"
         cap.runs[0].font.size = Pt(8.5)
@@ -412,13 +412,13 @@ def build() -> None:
     new_page(doc, "01B  PRODUCT OVERVIEW", "Dashboard purpose and access", "Who the dashboard serves, what it supports, and how to open or publish it")
     add_key_value_table(doc, [
         ("Dashboard overview", "An interactive Harris County platform showing how future precipitation extremes intersect with housing, population, employment, social vulnerability, and land-use change."),
-        ("Key functions", "Explore four GMT warming thresholds, CHEI patterns, 2020–2050 growth, housing stocks, parcel land use, compound hotspots, and selected-tract profiles."),
+        ("Key functions", "Explore four GMT warming thresholds, CHEI patterns, 2020–2050 growth, housing stocks, parcel land use, pattern-based compound hotspots, tract profiles, and ZIP-code navigation."),
         ("Potential audiences", "Researchers, planners, local governments, housing and community-development agencies, emergency managers, policymakers, nonprofit organizations, and community stakeholders."),
         ("Practical applications", "Climate adaptation, housing resilience, land-use and growth management, infrastructure investment, vulnerability assessment, and environmental-justice research."),
     ])
     add_subheading(doc, "Three access modes")
     add_key_value_table(doc, [
-        ("GitHub Pages / standalone", "Publish index.html and .nojekyll from the repository root, or open index.html directly. Analytical layers and JavaScript are embedded; housing points use a deterministic preview sample."),
+        ("GitHub Pages / standalone", "Publish index.html and .nojekyll from the repository root, or open index.html directly. Analytical layers, ZIP boundaries, patterns, and JavaScript are embedded; external internet access is used only for the optional basemap tiles."),
         ("Full-data local app", "Run server.py. The map requests all relevant single- and multi-family locations for the current viewport."),
         ("Container deployment", "Build the included Dockerfile on a compatible host, then use the provider-issued HTTPS address as the public dashboard URL."),
     ])
@@ -454,15 +454,16 @@ def build() -> None:
         r.font.size = Pt(8.8)
         r.font.bold = True
         r.font.color.rgb = RGBColor.from_string(NAVY)
+    add_key_value_table(doc, [("ZIP-code navigation", f"{counts['zip_codes']:,} Harris County ZIP boundaries are embedded for five-digit search and an optional all-boundaries overlay; no indicators are aggregated to ZIPs.")])
     add_subheading(doc, "Layer groups")
     add_key_value_table(doc, [
         ("Climate precipitation", "Four GMT point layers, four tract aggregations, one GMT 2.5°C-vs-1.5°C change layer, and four reproducibly derived display surfaces."),
         ("Parcel housing and land use", "2020 current land use, 2050 projected land use, parcel housing-unit change, and single-/multi-family locations."),
         ("Tract housing and growth", "CHEI, SVI, population density, population/household/employment projections and changes, housing-stock counts, and compound hotspots."),
-        ("Reference geometry", "Harris County boundary plus tract and parcel geometry in EPSG:3857 for web mapping."),
+        ("Reference geometry", "Harris County, census-tract, parcel, and 155 ZIP-code boundaries prepared for web mapping. ZIP geometry supports search and orientation only; indicators are not aggregated to ZIPs."),
     ])
     add_subheading(doc, "Audit findings that affect the interface")
-    add_body(doc, "1. The open-source FileGDB reader exposes 30 vector layers but does not expose the four user-listed gmt_*_pr_Kriging datasets. The package retains every exposed point and tract precipitation layer and produces separately labeled derived surfaces.")
+    add_body(doc, "1. The open-source FileGDB reader exposes 31 vector layers, including Harris_County_Zipcodes, but does not expose the four user-listed gmt_*_pr_Kriging datasets. The package retains every exposed point and tract precipitation layer and produces separately labeled derived surfaces.")
     add_body(doc, "2. harris_census_tract_CHEI_2050 and harris_census_tract_climate_housing_exposure_index_2050 contain identical CHEI 2050 values (maximum absolute difference = 0) and are consolidated in the map menu.")
     add_body(doc, "3. The actual GDB names use extreme_precip; the supplied inventory text used extreme_precipi for several tract layer names.")
 
@@ -472,15 +473,15 @@ def build() -> None:
     for n, (title, text) in enumerate([
         ("Read and audit", "Enumerate every exposed FileGDB layer, record geometry/counts, and identify named layers that are absent or unsupported."),
         ("Consolidate tracts", "Join CHEI, SVI, GMT precipitation, growth, housing, and hotspot attributes by 11-digit GEOID."),
-        ("Prepare web geometry", "Simplify tract, parcel, and county geometry without changing the source geodatabase; preserve parcel-level housing-unit change and land-use labels."),
+        ("Prepare web geometry", "Simplify tract, ZIP, parcel, and county geometry without changing the source geodatabase; preserve parcel-level housing-unit change, land-use labels, and five-digit ZIP identifiers."),
         ("Optimize housing stocks", "Create a complete 1 km density grid, a standalone sample, and x-sorted NumPy arrays used by the viewport API."),
-        ("Build the interface", "Serialize the Bokeh application and inline resources into one portable HTML file; serve the same file through FastAPI for full-point mode."),
+        ("Build the interface", "Serialize the Bokeh application, analytical data, ZIP geometry, hotspot patterns, and inline resources into one portable HTML file; serve the same file through FastAPI for full-point mode."),
     ], 1):
         add_step(doc, n, title, text)
     add_subheading(doc, "Derived ordinary-kriging surfaces")
     add_body(doc, "For each GMT threshold, the script fits an exponential semivariogram to the 246 uploaded climate-model points, solves an ordinary-kriging system, predicts a regular Harris County grid, masks cells outside the county, and stores both numeric and RGBA arrays. The surfaces are display products, not replacements for authoritative rasters.")
     add_subheading(doc, "Performance and privacy controls")
-    add_body(doc, "The server queries x-sorted point arrays by binary search, filters by the current y-range, and deterministically caps the browser response. The exported web assets omit property account IDs, mailing fields, assessed values, and unused HCAD attributes.")
+    add_body(doc, "The server queries x-sorted point arrays by binary search, filters by the current y-range, and deterministically caps the browser response. The exported web assets omit property account IDs, mailing fields, assessed values, and unused HCAD attributes. The separate ZIP layer retains only locator fields and generalized geometry.")
 
     # Page 5.
     new_page(doc, "04  INSTALLATION", "Run the prepared dashboard locally", "Two commands are sufficient after installing the pinned environment")
@@ -500,7 +501,7 @@ conda activate climate-housing-dashboard
 python server.py
 """)
     add_section_heading(doc, "4.3", "No-server preview")
-    add_body(doc, "Open index.html directly in a modern browser. The compatibility file climate_housing_exposure_index_dashboard.html contains identical content. All tract, parcel, climate-point, grid, chart, methods, and terms content remains interactive. Only the million-record point service changes to the embedded preview sample.")
+    add_body(doc, "Open index.html directly in a modern browser. The compatibility file climate_housing_exposure_index_dashboard.html contains identical content. Tract, parcel, climate-point, grid, pattern-hotspot, ZIP-locator, chart, methods, and terms content remains interactive. Only the million-record single-family point service changes to the embedded deterministic preview sample. Internet access is required only for the optional basemap tiles.")
     add_section_heading(doc, "4.4", "Package structure")
     add_code(doc, """
 Climate_Housing_Exposure_Index_Dashboard/
@@ -519,7 +520,7 @@ Climate_Housing_Exposure_Index_Dashboard/
 
     # Page 6.
     new_page(doc, "05  FULL REBUILD", "Regenerate the dashboard from the File Geodatabase", "The source geodatabase is read-only throughout this workflow")
-    add_step(doc, 1, "Extract the uploaded archive", "Unzip Climate_Housing_Exposure_Index_Dashboard.gdb.zip and identify the extracted .gdb directory.")
+    add_step(doc, 1, "Extract the uploaded archive", "Unzip Climate_Housing_Exposure_Index_Dashboard.gdb_add_on.zip and identify the extracted Climate_Housing_Exposure_Index_Dashboard.gdb directory.")
     add_step(doc, 2, "Run preprocessing", "Pass the extracted geodatabase path and the package data directory to preprocess_data.py.")
     add_code(doc, """
 python preprocess_data.py \\
@@ -528,11 +529,12 @@ python preprocess_data.py \\
 """)
     add_step(doc, 3, "Rebuild the standalone application", "Serialize the prepared data, charts, controls, methods, source links, and terms into the HTML deliverable.")
     add_code(doc, "python build_dashboard.py")
-    add_step(doc, 4, "Validate the result", "Check required files, counts, sorted point arrays, dashboard identifiers, and source-contact text.")
+    add_step(doc, 4, "Validate the result", "Check required files, 31-layer inventory, 155 ZIP boundaries, sorted point arrays, hotspot logic and pattern identifiers, locator controls, and source-contact text.")
     add_code(doc, "python scripts/validate_dashboard.py")
     add_subheading(doc, "Principal generated assets")
     add_key_value_table(doc, [
         ("tracts_web.geojson", "1,115 consolidated tract features and all map/profile fields"),
+        ("zipcodes_web.geojson", "155 simplified Harris County ZIP boundaries used only for search, zoom, and optional orientation overlay"),
         ("parcels_web.geojson", "20,344 parcel features with current/future land use and housing-unit change"),
         ("housing_grid.geojson", "4,863 occupied 1 km cells calculated from all housing records"),
         ("sf_points_sorted.npy / mf_points_sorted.npy", "Full x-sorted location arrays used by the viewport API"),
@@ -545,12 +547,12 @@ python preprocess_data.py \\
     add_section_heading(doc, "6.1", "Primary map layer")
     add_body(doc, "Choose a composite, climate, growth, equity, housing, or parcel layer. The legend, histogram, hover value, opacity, and about-this-layer panel update together. A GMT selector appears only for tract precipitation, climate points, and kriging surfaces. A housing-type selector appears only for density and point views.")
     add_section_heading(doc, "6.2", "Compound-hotspot typology")
-    add_body(doc, "The noncompensatory hotspot layer retains all eight combinations of high precipitation hazard, projected household growth, and social vulnerability: none; hazard only; growth only; SVI only; hazard plus growth; hazard plus SVI; growth plus SVI; and all three.")
+    add_body(doc, "The noncompensatory hotspot layer retains all eight combinations of high precipitation hazard, projected household growth, and social vulnerability: none; hazard only; growth only; SVI only; hazard plus growth; hazard plus SVI; growth plus SVI; and all three. Patterns, rather than color alone, encode the factors: diagonal lines indicate precipitation hazard, vertical lines indicate household growth, and dots indicate social vulnerability; overlaid patterns preserve the combinations.")
     add_body(doc, "A condition is high when it meets the countywide 80th-percentile threshold: GMT +2.5°C precipitation of at least 203.603 mm, projected household growth of at least 746 households, or SVI of at least 0.88386. The legend reports both the thresholds and tract counts.")
     add_section_heading(doc, "6.3", "Configurable two-factor overlap mode")
     add_body(doc, "Enable the overlap switch, select factor A and factor B, and set a countywide percentile threshold from the 60th to the 95th percentile. Each tract is classified as neither high, factor-A-only, factor-B-only, or both high. The dashboard reports the exact numeric cutoffs and summarizes the both-high tracts and their projected residents, households, and jobs.")
-    add_section_heading(doc, "6.4", "Tract search and profiles")
-    add_body(doc, "Enter an exact 11-digit GEOID to zoom and select a tract, or click a tract on the map. The right panel reports CHEI 2050, SVI, population and household change, hotspot class, parcel housing-unit change, precipitation across all four GMT thresholds, and 2020-versus-2050 population/household/employment values.")
+    add_section_heading(doc, "6.4", "Tract and ZIP-code location")
+    add_body(doc, "Enter an exact 11-digit GEOID to zoom and select a tract, or click a tract on the map. Enter a five-digit ZIP code to zoom to and outline its boundary; the optional toggle displays all 155 ZIP boundaries for orientation. ZIP geometry is a locator only and does not create ZIP-level CHEI, SVI, growth, housing, or hotspot estimates. The selected-tract panel reports CHEI 2050, SVI, population and household change, hotspot class, parcel housing-unit change, precipitation across all four GMT thresholds, and 2020-versus-2050 population/household/employment values.")
     add_section_heading(doc, "6.5", "Housing-stock point mode")
     add_body(doc, "In standalone mode, the map displays the embedded representative sample. In server mode, every pan or zoom triggers a bounded API request for source points in the visible map extent. Use the full-record density grid for countywide pattern comparison and the point layer for local distribution inspection.")
     add_section_heading(doc, "6.6", "Interpretation")
@@ -565,7 +567,7 @@ docker run --rm -p 8050:8050 climate-housing-exposure-index
 """)
     add_body(doc, "Test the local container at http://127.0.0.1:8050 and confirm that /api/health returns status=ok.")
     add_section_heading(doc, "7.2", "Deploy to a container host")
-    add_step(doc, 1, "Create a repository", "Upload this package without the extracted 204 MB source geodatabase. The prepared data directory is sufficient to run the app.")
+    add_step(doc, 1, "Create a repository", "For GitHub Pages, upload index.html and .nojekyll at minimum; the complete package also retains source code, documentation, and prepared data. Do not upload the extracted source geodatabase unless archival sharing is intended.")
     add_step(doc, 2, "Create a Docker web service", "Use the included Dockerfile or render.yaml example. Allocate enough image/storage capacity for the processed data and standalone HTML.")
     add_step(doc, 3, "Verify the service", "Open the platform URL, inspect several layers, pan the housing-point map, and check /api/health.")
     add_step(doc, 4, "Publish the access link", "Use the provider-issued HTTPS address or map a custom domain. That address becomes the public dashboard access link.")
@@ -582,10 +584,10 @@ docker run --rm -p 8050:8050 climate-housing-exposure-index
     new_page(doc, "08  QUALITY, TERMS, AND SOURCES", "Validation record and responsible-use requirements", "Use the dashboard as an exploratory evidence layer, not as a sole decision basis")
     add_section_heading(doc, "8.1", "Completed validation")
     add_key_value_table(doc, [
-        ("Data integrity", f"{len(inventory)} GDB layers inventoried; {counts['census_tracts']:,} tracts; {counts['parcels']:,} parcels; sorted full-point arrays verified."),
-        ("Interactive behavior", "Legends, distribution plots, GMT switching, kriging, hotspot combinations, overlap thresholds, selection, and charts tested without JavaScript exceptions."),
+        ("Data integrity", f"{len(inventory)} GDB layers inventoried; {counts['census_tracts']:,} tracts; {counts['zip_codes']:,} ZIP boundaries; {counts['parcels']:,} parcels; sorted full-point arrays verified."),
+        ("Interactive behavior", "Legends, distribution plots, GMT switching, kriging, the eight patterned hotspot combinations, tract selection, ZIP 77007 search, all-ZIP toggle, overlap thresholds, and charts tested without JavaScript exceptions."),
         ("Server behavior", "Health endpoint, dashboard response, and capped combined housing-point query tested successfully."),
-        ("Visual review", "Revised overview cards, contained legends, unclipped distributions, explanatory panels, map, profiles, methods, footer, and terms inspected at desktop resolution."),
+        ("Visual review", "Revised overview cards, contained pattern legend, unclipped distributions, ZIP controls and outlines, explanatory panels, map, profiles, methods, footer, and terms inspected at desktop resolution."),
     ])
     add_section_heading(doc, "8.2", "Terms of use")
     add_body(doc, "This dashboard is developed to visualize and explore spatial data related to precipitation extremes, housing stocks, population, and land-use projections. The information is intended for research, educational, and informational purposes only.")
@@ -620,7 +622,7 @@ docker run --rm -p 8050:8050 climate-housing-exposure-index
     doc.core_properties.title = "Climate Housing Exposure Index Dashboard Reproducibility Guide"
     doc.core_properties.subject = "Harris County climate, housing, growth, and social vulnerability dashboard"
     doc.core_properties.author = "CECREH"
-    doc.core_properties.keywords = "Harris County, CHEI, climate precipitation, housing, SVI, dashboard"
+    doc.core_properties.keywords = "Harris County, CHEI, climate precipitation, housing, SVI, ZIP code, compound hotspot, pattern legend, dashboard"
     doc.save(OUT)
     print(OUT)
 
