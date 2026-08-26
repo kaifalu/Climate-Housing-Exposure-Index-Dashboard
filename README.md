@@ -1,6 +1,6 @@
 # Climate-Housing Exposure Index Dashboard — Harris County, Texas
 
-Public GitHub Pages project: `https://kaifalu.github.io/Climate-Housing-Exposure-Index-Dashboard/`
+Public GitHub Pages project: https://kaifalu.github.io/Climate-Housing-Exposure-Index-Dashboard/
 
 The **Climate-Housing Exposure Index (CHEI) Dashboard** is an interactive web platform for examining where future extreme precipitation intersects with housing, population, employment, social vulnerability, and land-use change across Harris County. It combines climate projections at multiple global mean temperature (GMT) thresholds with 2020 conditions and 2050 projections to support place-based climate-risk screening.
 
