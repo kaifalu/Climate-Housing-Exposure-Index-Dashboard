@@ -1,0 +1,37 @@
+{
+  "source_geodatabase": "Climate_Housing_Exposure_Index_Dashboard.gdb",
+  "available_vector_layers": 32,
+  "requested_kriging_layers_not_exposed": [
+    "gmt_15_pr_Kriging",
+    "gmt_20_pr_Kriging",
+    "gmt_25_pr_Kriging",
+    "gmt_30_pr_Kriging"
+  ],
+  "kriging_display_substitution": "Derived ordinary-kriging surfaces from the corresponding uploaded GMT point layers.",
+  "counts": {
+    "census_tracts": 1115,
+    "zip_codes": 155,
+    "parcels": 20344,
+    "single_family_points": 1093063,
+    "multi_family_points": 11572,
+    "housing_grid_cells": 4863,
+    "all_three_high_hotspots": 5,
+    "commissioner_precincts": 4
+  },
+  "totals": {
+    "population_2020": 4734349.0,
+    "population_2050": 6165913.0,
+    "population_change": 1431564.0,
+    "households_2020": 1692734.0,
+    "households_2050": 2383820.0,
+    "household_change": 691086.0,
+    "employment_2020": 2520126.0,
+    "employment_2050": 3638652.0,
+    "employment_change": 1118526.0
+  },
+  "duplicate_CHEI_2050_max_abs_difference": 0.0,
+  "field_name_note": "Actual GDB tract layers use extreme_precip rather than the extreme_precipi spelling in the supplied inventory text.",
+  "zip_code_note": "Harris_County_Zipcodes is included for boundary display and search only; no ZIP-level indicator aggregation is produced.",
+  "privacy_note": "The dashboard exports housing locations/counts only; property account and mailing fields are not included in web assets.",
+  "commissioner_precinct_note": "Harris_County_Commissioner_Precincts is included for boundary display, search, and tract-based screening summaries only; no precinct-level source aggregation is produced."
+}
