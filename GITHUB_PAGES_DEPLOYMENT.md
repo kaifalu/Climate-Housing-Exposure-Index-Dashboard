@@ -1,26 +1,54 @@
 # Climate-Housing Exposure Index Dashboard — GitHub Pages Release
 
-This folder is ready for static GitHub Pages publication. The primary entry file, **`index.html`**, is a data-self-contained dashboard: tract, parcel, climate, housing-preview, kriging, and ZIP-boundary data are embedded in the HTML together with the Bokeh application code.
+This folder is ready for static GitHub Pages publication. The primary entry file, **`index.html`**, is data-self-contained: tract, parcel, climate, housing-preview, kriging, ZIP-boundary, commissioner-precinct, legend-filter, Quick Decision, and one-page reporting data and logic are embedded in the HTML together with BokehJS.
 
 ## Publish
 
 1. Create or open the intended GitHub repository.
-2. Upload `index.html` and `.nojekyll` to the repository root. Uploading the complete GitHub Pages package is also acceptable when the source code and documentation should remain publicly available.
+2. Upload `index.html` and `.nojekyll` to the repository root. Uploading the complete GitHub Pages package is recommended when source code and documentation should remain publicly available.
 3. Open the repository's **Settings → Pages** page.
-4. Under **Build and deployment**, select **Deploy from a branch**, then select the default branch and **/(root)**.
+4. Under **Build and deployment**, select **Deploy from a branch**, then choose the default branch and **/(root)**.
 5. Save and wait for GitHub to display the public HTTPS URL.
 
-The analytical dashboard does not require Python or separate data-file requests. Internet access is used only for the CARTO/OpenStreetMap basemap tiles; the analytical layers, five-digit ZIP locator, optional all-ZIP-boundaries overlay, pattern-based compound-hotspot map, legends, charts, methods, and terms remain embedded in `index.html`.
+The dashboard does not require Python or separate analytical-data requests. Internet access is used only for optional CARTO/OpenStreetMap basemap tiles.
 
-## ZIP and hotspot behavior
+## Static-dashboard functions
 
-- Enter a five-digit Harris County ZIP code to zoom to and highlight its boundary.
-- Use **Show all ZIP-code boundaries** to display all 155 ZIP boundaries.
-- ZIP geometry is used for navigation only; no indicator is re-aggregated to ZIP geography.
-- The compound-hotspot map uses diagonal lines for precipitation hazard, vertical lines for household growth, and dots for social vulnerability; combinations overlay the corresponding patterns.
+- Explore CHEI, precipitation, growth, SVI, housing, land-use, parcel, kriging, and patterned hotspot layers.
+- Search an exact census-tract GEOID or a five-digit Harris County ZIP code.
+- Select and locate Harris County Commissioner Precinct 1–4.
+- Optionally display all ZIP or all commissioner-precinct boundaries.
+- Click one map-legend class to highlight matching features, zoom to matches, or clear the filter.
+- Use four Quick Decision questions to activate focused analytical views.
+- Generate a one-page tract, ZIP, or precinct decision brief and use the browser's **Print / Save as PDF** function.
 
-## Included source code
+ZIP and precinct reports are screening summaries of intersecting census tracts, not official ZIP- or precinct-level aggregates.
 
-The final GitHub Pages archive retains all code under `source_code/`. The complete processed data needed to rebuild or run the server-backed version are included in the deployment archive, and the revised source geodatabase is included in the full reproducibility archive.
+## Repository structure
 
-Generated: 2026-08-19 UTC
+Minimal publication:
+
+```text
+repository-root/
+├── index.html
+└── .nojekyll
+```
+
+Complete publication:
+
+```text
+repository-root/
+├── index.html
+├── climate_housing_exposure_index_dashboard.html
+├── .nojekyll
+├── README.md
+├── GITHUB_PAGES_DEPLOYMENT.md
+├── REVISION_NOTES.md
+├── source_code/
+├── docs/
+└── screenshots/
+```
+
+The complete deployment archive retains all processed data and server files. The full reproducibility archive additionally retains the revised source geodatabase.
+
+Generated: 2026-08-26 UTC

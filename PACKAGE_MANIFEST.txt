@@ -1,60 +1,90 @@
-Climate-Housing Exposure Index Dashboard — Complete Deployment Package Manifest
-Generated: 2026-08-19 UTC
+Climate Housing Exposure Index Dashboard — Final Deployment Package Manifest
+Release date: 2026-08-26
 
-Purpose: GitHub storage, local execution, full-data FastAPI operation, or container deployment.
-Includes all prepared data, both data-self-contained HTML entry files, source code, documentation, and screenshots.
-Verified scale: 31 exposed GDB layers, 1,115 tracts, 155 ZIP boundaries, 20,344 changed parcels, 1,093,063 single-family records, and 11,572 multi-family records.
+Implemented release functions:
+- Census-tract, ZIP-code, and Harris County commissioner-precinct location controls.
+- Optional overlays for all ZIP-code and all commissioner-precinct boundaries.
+- Single-category clickable legend filtering for tract, parcel, grid, point, hotspot, and kriging-related views.
+- Four-question Quick Decision View.
+- Browser-generated one-page decision briefs with Print / Save as PDF.
+- Pattern-based eight-category compound climate-inequality hotspot symbology.
+- Data-self-contained index.html and identical compatibility HTML.
 
-Files: 49
-Uncompressed file bytes: 64,863,293
+Validated data counts:
+- Exposed FileGDB vector layers: 32
+- Census tracts: 1,115
+- ZIP-code boundaries: 155
+- Commissioner precinct boundaries: 4
+- Changed parcels: 20,344
+- Single-family points: 1,093,063
+- Multi-family points: 11,572
+- Housing-density grid cells: 4,863
+- All-three-high hotspot tracts: 5
 
-File inventory:
-           0  .nojekyll
-       1,931  ATTRIBUTION_AND_DATA_NOTES.md
-         259  Dockerfile
-       1,979  GITHUB_PAGES_DEPLOYMENT.md
-      12,971  README.md
-       2,743  REVISION_NOTES.md
-       1,384  TERMS_OF_USE.md
-     103,680  build_dashboard.py
-  13,054,281  climate_housing_exposure_index_dashboard.html
-      54,185  data/climate_points.csv
-      22,017  data/county_web.geojson
-       1,404  data/data_quality_report.json
-       2,045  data/gdb_layer_inventory.csv
-   1,921,588  data/housing_grid.geojson
-      75,632  data/kriging_gmt_15.png
-     149,728  data/kriging_gmt_15_rgba.npy
-     299,328  data/kriging_gmt_15_values.npy
-      77,338  data/kriging_gmt_20.png
-     149,728  data/kriging_gmt_20_rgba.npy
-     299,328  data/kriging_gmt_20_values.npy
-      79,010  data/kriging_gmt_25.png
-     149,728  data/kriging_gmt_25_rgba.npy
-     299,328  data/kriging_gmt_25_values.npy
-      77,462  data/kriging_gmt_30.png
-     149,728  data/kriging_gmt_30_rgba.npy
-     299,328  data/kriging_gmt_30_values.npy
-       1,413  data/kriging_metadata.json
-     383,426  data/mf_points.csv
-     185,280  data/mf_points_sorted.npy
-  10,649,440  data/parcels_web.geojson
-  17,489,136  data/sf_points_sorted.npy
-     994,183  data/sf_sample.csv
-   1,921,249  data/tracts_web.geojson
-     987,907  data/zipcodes_web.geojson
-     429,092  docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.docx
-         289  environment.yml
-  13,054,281  index.html
-      18,416  preprocess_data.py
-         187  render.yaml
-         168  requirements.txt
-          47  run_dashboard.bat
-          76  run_dashboard.sh
-     411,330  screenshots/compound_hotspot_patterns.png
-     388,723  screenshots/dashboard_overview.png
-     300,578  screenshots/hotspot_legend_and_guidance.png
-     315,702  screenshots/zip_locator_77007.png
-      34,712  scripts/create_reproduction_guide.py
-       6,437  scripts/validate_dashboard.py
-       5,088  server.py
+Package file inventory (relative path | bytes):
+.nojekyll | 0
+ATTRIBUTION_AND_DATA_NOTES.md | 2385
+Dockerfile | 259
+GITHUB_PAGES_DEPLOYMENT.md | 2413
+README.md | 15006
+REVISION_NOTES.md | 4169
+TERMS_OF_USE.md | 1384
+build_dashboard.py | 138480
+climate_housing_exposure_index_dashboard.html | 13220831
+data/climate_points.csv | 54185
+data/commissioner_precincts_web.geojson | 140250
+data/county_web.geojson | 22017
+data/data_quality_report.json | 1643
+data/gdb_layer_inventory.csv | 2107
+data/housing_grid.geojson | 1921588
+data/kriging_gmt_15.png | 75632
+data/kriging_gmt_15_rgba.npy | 149728
+data/kriging_gmt_15_values.npy | 299328
+data/kriging_gmt_20.png | 77338
+data/kriging_gmt_20_rgba.npy | 149728
+data/kriging_gmt_20_values.npy | 299328
+data/kriging_gmt_25.png | 79010
+data/kriging_gmt_25_rgba.npy | 149728
+data/kriging_gmt_25_values.npy | 299328
+data/kriging_gmt_30.png | 77462
+data/kriging_gmt_30_rgba.npy | 149728
+data/kriging_gmt_30_values.npy | 299328
+data/kriging_metadata.json | 1413
+data/mf_points.csv | 383426
+data/mf_points_sorted.npy | 185280
+data/parcels_web.geojson | 10649440
+data/sf_points_sorted.npy | 17489136
+data/sf_sample.csv | 994183
+data/tracts_web.geojson | 1921249
+data/zipcodes_web.geojson | 987907
+docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.docx | 556594
+docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.pdf | 547838
+environment.yml | 289
+index.html | 13220831
+preprocess_data.py | 19900
+render.yaml | 187
+requirements.txt | 168
+run_dashboard.bat | 47
+run_dashboard.sh | 76
+screenshots/commissioner_precinct_decision_brief.png | 116887
+screenshots/commissioner_precinct_locator.png | 386729
+screenshots/compound_hotspot_patterns.png | 411330
+screenshots/dashboard_initial_precinct.png | 407094
+screenshots/dashboard_overview.png | 408108
+screenshots/hotspot_legend_and_guidance.png | 300578
+screenshots/interactive_legend_filter.png | 437151
+screenshots/zip_locator_77007.png | 315702
+scripts/browser_smoke_test.py | 4213
+scripts/create_reproduction_guide.py | 38267
+scripts/validate_dashboard.py | 10086
+server.py | 5147
+PACKAGE_MANIFEST.txt | generated release manifest
+checksums.sha256 | SHA-256 values for every package file except the checksum file itself
+
+Validation record:
+- preprocess_data.py completed successfully against Climate_Housing_Exposure_Index_Dashboard.gdb_boundary.zip.
+- build_dashboard.py regenerated both standalone HTML files successfully.
+- scripts/validate_dashboard.py passed all data, geometry, hotspot, locator, and embedded-HTML checks.
+- scripts/browser_smoke_test.py passed commissioner-precinct location/overlay, legend filtering, Quick Decision, and report generation.
+- FastAPI health, metadata, root dashboard, and capped full-point viewport endpoints returned successful responses.
+- The DOCX reproducibility guide was rendered and visually inspected across all pages; its PDF companion is included.

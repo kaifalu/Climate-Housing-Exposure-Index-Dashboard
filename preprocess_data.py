@@ -2,7 +2,7 @@
 """Prepare web-ready assets for the Harris County Climate Housing Exposure dashboard.
 
 The script reads the uploaded Esri File Geodatabase, consolidates tract metrics,
-prepares simplified parcel, tract, county, and ZIP-code geometry, builds a complete
+prepares simplified parcel, tract, county, ZIP-code, and commissioner-precinct geometry, builds a complete
 housing density grid, stores point arrays for viewport queries, and derives
 ordinary-kriging surfaces when the four named GDB kriging rasters are
 unavailable to the open-source FileGDB reader.
@@ -230,6 +230,22 @@ def main() -> None:
     zipcodes["label_x"] = zip_points.x.to_numpy()
     zipcodes["label_y"] = zip_points.y.to_numpy()
 
+    # Harris County commissioner precincts are used for location, orientation,
+    # and tract-based screening summaries. No precinct-level analytical
+    # aggregation is created in the source data.
+    precinct_fields = ["PCT_NO", "AREA_IN_MI"]
+    precincts = read_layer(gdb, "Harris_County_Commissioner_Precincts", precinct_fields).to_crs(3857)
+    precincts["PCT_NO"] = pd.to_numeric(precincts["PCT_NO"], errors="coerce").astype("Int64")
+    precincts["AREA_IN_MI"] = pd.to_numeric(precincts["AREA_IN_MI"], errors="coerce")
+    precinct_bounds = precincts.geometry.bounds.rename(columns={
+        "minx": "bbox_minx", "miny": "bbox_miny",
+        "maxx": "bbox_maxx", "maxy": "bbox_maxy",
+    })
+    precinct_points = precincts.geometry.representative_point()
+    precincts = pd.concat([precincts.reset_index(drop=True), precinct_bounds.reset_index(drop=True)], axis=1)
+    precincts["label_x"] = precinct_points.x.to_numpy()
+    precincts["label_y"] = precinct_points.y.to_numpy()
+
     tracts_web = tracts.copy()
     tracts_web.geometry = tracts_web.geometry.simplify(30, preserve_topology=True)
     tracts_web.to_file(out / "tracts_web.geojson", driver="GeoJSON")
@@ -242,6 +258,9 @@ def main() -> None:
     zipcodes_web = zipcodes.copy()
     zipcodes_web.geometry = zipcodes_web.geometry.simplify(20, preserve_topology=True)
     zipcodes_web.to_file(out / "zipcodes_web.geojson", driver="GeoJSON")
+    precincts_web = precincts.copy()
+    precincts_web.geometry = precincts_web.geometry.simplify(28, preserve_topology=True)
+    precincts_web.to_file(out / "commissioner_precincts_web.geojson", driver="GeoJSON")
 
     # Climate point layers.
     climate_parts = []
@@ -325,7 +344,7 @@ def main() -> None:
         "kriging_display_substitution": "Derived ordinary-kriging surfaces from the corresponding uploaded GMT point layers.",
         "counts": {
             "census_tracts": int(len(tracts)), "zip_codes": int(len(zipcodes)),
-            "parcels": int(len(parcels)),
+            "commissioner_precincts": int(len(precincts)), "parcels": int(len(parcels)),
             "single_family_points": int(len(sf_xy)), "multi_family_points": int(len(mf_xy)),
             "housing_grid_cells": int(len(housing_grid)),
             "all_three_high_hotspots": int((tracts["hotspot_ca"].astype(str) == "All Three High").sum()),
@@ -344,6 +363,7 @@ def main() -> None:
         "duplicate_CHEI_2050_max_abs_difference": max_chei_diff,
         "field_name_note": "Actual GDB tract layers use extreme_precip rather than the extreme_precipi spelling in the supplied inventory text.",
         "zip_code_note": "Harris_County_Zipcodes is included for boundary display and search only; no ZIP-level indicator aggregation is produced.",
+        "commissioner_precinct_note": "Harris_County_Commissioner_Precincts is included for boundary display, search, and tract-based screening summaries only; no precinct-level source aggregation is produced.",
         "privacy_note": "The dashboard exports housing locations/counts only; property account and mailing fields are not included in web assets.",
     }
     (out / "data_quality_report.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
