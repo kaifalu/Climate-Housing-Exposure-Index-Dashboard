@@ -1,0 +1,57 @@
+1. Climate Precipitation Data Layers:
+
+ 
+
+    gmt_30_model_pr_ssp_mean - The average 3-day precipitation sum of extreme precipitation events during the 20-year period at the point level when global mean temperature (GMT) increases by 3°C relative to 1850-1899 across all SSP scenarios;
+    gmt_30_pr_Kriging - The spatial interpolation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the area level using the Kriging method when global mean temperature (GMT) increases by 3°C relative to 1850-1899 across all SSP scenarios;
+    harris_census_tract_extreme_precipi_gmt_30 - The aggregation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the census tract level when global mean temperature (GMT) increases by 3°C relative to 1850-1899 across all SSP scenarios;
+
+    gmt_25_model_pr_ssp_mean - The average 3-day precipitation sum of extreme precipitation events during the 20-year period at the point level when global mean temperature (GMT) increases by 2.5°C relative to 1850-1899 across all SSP scenarios;
+    gmt_25_pr_Kriging - The spatial interpolation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the area level using the Kriging method when global mean temperature (GMT) increases by 2.5°C relative to 1850-1899 across all SSP scenarios;
+    harris_census_tract_extreme_precipi_gmt_25 - The aggregation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the census tract level when global mean temperature (GMT) increases by 2.5°C relative to 1850-1899 across all SSP scenarios;
+
+    gmt_20_model_pr_ssp_mean - The average 3-day precipitation sum of extreme precipitation events during the 20-year period at the point level when global mean temperature (GMT) increases by 2°C relative to 1850-1899 across all SSP scenarios;
+    gmt_20_pr_Kriging - The spatial interpolation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the area level using the Kriging method when global mean temperature (GMT) increases by 2°C relative to 1850-1899 across all SSP scenarios;
+    harris_census_tract_extreme_precipi_gmt_20 - The aggregation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the census tract level when global mean temperature (GMT) increases by 2°C relative to 1850-1899 across all SSP scenarios;
+
+    gmt_15_model_pr_ssp_mean - The average 3-day precipitation sum of extreme precipitation events during the 20-year period at the point level when global mean temperature (GMT) increases by 1.5°C relative to 1850-1899 across all SSP scenarios;
+    gmt_15_pr_Kriging - The spatial interpolation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the area level using the Kriging method when global mean temperature (GMT) increases by 1.5°C relative to 1850-1899 across all SSP scenarios;
+    harris_census_tract_extreme_precipi_gmt_15 - The aggregation of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the census tract level when global mean temperature (GMT) increases by 1.5°C relative to 1850-1899 across all SSP scenarios;
+
+    harris_census_tract_extreme_precip_gmt_25_vs_15 - The aggregated percentage change of the average 3-day precipitation sum of extreme precipitation events during the 20-year period at the census tract level when global mean temperature (GMT) increases by 2.5°C relative to 1850-1899 across all SSP scenarios, relative to GMT=1.5°C;
+
+ 
+
+2. Parcel-Level Housing Data Layers:
+
+
+    harris_future_land_use_2050 - The type of projected parcel-level future land use in 2050, showing only land uses with changes in housing units by 2050; 
+    harris_current_land_use_2020 - The type of current parcel-level future land use in 2020, showing only land uses with changes in housing units by 2050; 
+    harris_housing_unit_change_2020_2050 - The number of projected parcel-level changes in housing units by 2050 relative to 2020; 
+    harris_multi_family_2020 - The spatial distribution of multi-family units in Harris County, TX, 2020;
+    harris_single_family_2020 - The spatial distribution of single-family units in Harris County, TX, 2020;
+
+ 
+
+3. Census Tract-Level Housing & Population Data Layers:
+
+
+    harris_census_tract_CHEI_2050 - The projected census tract-level climate housing exposure index in Harris County, TX, 2050;
+    harris_census_tract_employment_proj_2050 - The count of projected census tract-level employment in Harris County, TX, 2050;
+    harris_census_tract_households_proj_2050 - The count of projected census tract-level households in Harris County, TX, 2050;
+    harris_census_tract_population_proj_2050 - The count of projected census tract-level population in Harris County, TX, 2050;
+    harris_census_tract_climate_housing_exposure_index_2050 - The projected census tract-level climate housing exposure index in Harris County, TX, 2050;
+    harris_census_tract_compound_climate_inequality_hotspots_2050 - The hotspot of census tracts with one, both, or all of high precipitation, high social vulnerability, and high housing growth in Harris County, TX, 2050;
+
+
+    harris_census_tract_CHEI_adaptation_gap_2020_2050 - The gap of projected census tract-level CHEI in Harris County, TX, 2050, relative to 2020;
+    harris_census_tract_employment_growth_2020_2050 - The projected census tract-level changes in employment in Harris County, TX, 2050, relative to 2020;
+    harris_census_tract_household_growth_2020_2050 - The projected census tract-level changes in households in Harris County, TX, 2050, relative to 2020;
+    harris_census_tract_population_growth_2020_2050 - The projected census tract-level population changes in Harris County, TX, 2050, relative to 2020;
+
+
+    harris_census_tract_CHEI_2020 - The census tract-level climate housing exposure index in Harris County, TX, 2020;
+    harris_census_tract_multi_family_units_2020 - The count of census tract-level multi-family units in Harris County, TX, 2020;
+    harris_census_tract_single_family_units_2020 - The count of census tract-level single-family units in Harris County, TX, 2020;
+    harris_census_tract_pop_density_2020 - The census tract-level population density in Harris County, TX, 2020;
+    harris_census_tract_social_vulnerability_index_2020 - The census tract-level social vulnerability index (SVI) in Harris County, TX, 2020;
