@@ -14,7 +14,9 @@ The dashboard does not require Python or separate analytical-data requests. Inte
 
 ## Static-dashboard functions
 
+- Use a consistently aligned page shell with content-driven Explore, Data & Methods, and Terms of Use sections.
 - Explore CHEI, precipitation, growth, SVI, housing, land-use, parcel, kriging, and patterned hotspot layers.
+- Review an expanded Layer Reference for the selected map layer, including source layer, geography, reference period, measurement, interpretation, planning use, and limitation.
 - Search an exact census-tract GEOID or a five-digit Harris County ZIP code.
 - Select and locate Harris County Commissioner Precinct 1–4.
 - Optionally display all ZIP or all commissioner-precinct boundaries.
@@ -44,11 +46,15 @@ repository-root/
 ├── README.md
 ├── GITHUB_PAGES_DEPLOYMENT.md
 ├── REVISION_NOTES.md
-├── source_code/
+├── build_dashboard.py
+├── preprocess_data.py
+├── server.py
+├── data/
+├── scripts/
 ├── docs/
 └── screenshots/
 ```
 
 The complete deployment archive retains all processed data and server files. The full reproducibility archive additionally retains the revised source geodatabase.
 
-Generated: 2026-08-26 UTC
+Generated: 2026-08-27 UTC

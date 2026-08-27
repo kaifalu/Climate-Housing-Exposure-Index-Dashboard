@@ -22,11 +22,10 @@ from bokeh.models import (
     HoverTool,
     InlineStyleSheet,
     NumeralTickFormatter,
+    RadioButtonGroup,
     Range1d,
     Select,
     Slider,
-    TabPanel,
-    Tabs,
     TapTool,
     TextInput,
     Toggle,
@@ -48,6 +47,14 @@ MAP_COLUMN_WIDTH = 1005
 MAP_PLOT_WIDTH = 985
 INSIGHTS_COLUMN_WIDTH = 390
 INSIGHT_CONTENT_WIDTH = 365
+
+# Full-width analysis band. The three widths plus two 14 px gaps equal the
+# 1,704 px content area inside the dashboard's 28 px side gutters.
+ANALYSIS_DETAIL_WIDTH = 650
+ANALYSIS_HIST_WIDTH = 500
+ANALYSIS_SELECTED_WIDTH = 526
+ANALYSIS_ACTION_WIDTH = 650
+ANALYSIS_NOTE_WIDTH = 1704
 
 HOTSPOT_PRECIP_THRESHOLD = 203.603
 HOTSPOT_HOUSEHOLD_THRESHOLD = 746
@@ -504,30 +511,296 @@ def build_dashboard() -> None:
         tap_tool.renderers = [tract_renderer]
 
     layer_meta = {
-        "chei_2050": {"label": "Composite • Climate Housing Exposure Index, 2050", "short": "CHEI (2050)", "source": "tract", "field": "CHEI_2050", "kind": "seq", "palette": SEQ_BLUE, "unit": "index", "decimals": 3, "description": "Projected tract-level CHEI for 2050, combining precipitation hazard, projected housing exposure, and social vulnerability."},
-        "chei_2020": {"label": "Composite • Climate Housing Exposure Index, 2020", "short": "CHEI (2020)", "source": "tract", "field": "CHEI_2020", "kind": "seq", "palette": SEQ_BLUE, "unit": "index", "decimals": 3, "description": "Baseline tract-level Climate Housing Exposure Index for 2020."},
-        "adapt_gap": {"label": "Composite • CHEI adaptation gap, 2020–2050", "short": "CHEI change", "source": "tract", "field": "adapt_gap", "kind": "div", "unit": "index change", "decimals": 3, "description": "CHEI in 2050 minus CHEI in 2020. Positive values indicate a higher modeled exposure index in 2050."},
-        "hotspot": {"label": "Composite • Compound climate-inequality hotspots, 2050", "short": "Hotspot combination", "source": "tract", "field": "hotspot_combo", "kind": "cat_hotspot", "description": "Eight-category, noncompensatory typology showing which high precipitation, household-growth, and social-vulnerability conditions occur together in each tract."},
-        "pr_tract": {"label": "Climate • Extreme 3-day precipitation by GMT (tract)", "short": "3-day precipitation", "source": "tract", "field": "pr_dynamic", "kind": "seq", "palette": SEQ_BLUE, "unit": "mm", "decimals": 1, "description": "Average three-day precipitation sum for extreme events during the 20-year period associated with the selected GMT threshold, aggregated to census tracts."},
-        "pr_change": {"label": "Climate • Precipitation change, GMT 2.5°C vs 1.5°C", "short": "Precipitation change", "source": "tract", "field": "sens_pct", "kind": "seq", "palette": SEQ_PURPLE, "unit": "%", "decimals": 1, "description": "Percentage change in average extreme three-day precipitation at GMT 2.5°C relative to GMT 1.5°C."},
-        "pr_points": {"label": "Climate • GMT model precipitation points", "short": "Model-point precipitation", "source": "climate_points", "field": "precip", "kind": "seq", "palette": SEQ_BLUE, "unit": "mm", "decimals": 1, "description": "Uploaded climate-model point values for the selected GMT threshold."},
-        "pr_kriging": {"label": "Climate • GMT precipitation kriging surface", "short": "Kriging precipitation", "source": "kriging", "field": "pr_dynamic", "kind": "seq", "palette": SEQ_BLUE, "unit": "mm", "decimals": 1, "description": "Derived ordinary-kriging display surface fitted to the uploaded point layer because the named GDB kriging raster was not exposed by the open-source FileGDB reader."},
-        "pop_2050": {"label": "Growth • Projected population, 2050", "short": "Population (2050)", "source": "tract", "field": "hp_2050", "kind": "seq", "palette": SEQ_TEAL, "unit": "people", "decimals": 0, "description": "Projected census tract population in 2050."},
-        "pop_growth": {"label": "Growth • Population change, 2020–2050", "short": "Population change", "source": "tract", "field": "pop_chg", "kind": "div", "unit": "people", "decimals": 0, "description": "Projected population change between 2020 and 2050."},
-        "hh_2050": {"label": "Growth • Projected households, 2050", "short": "Households (2050)", "source": "tract", "field": "hh_2050", "kind": "seq", "palette": SEQ_TEAL, "unit": "households", "decimals": 0, "description": "Projected census tract households in 2050."},
-        "hh_growth": {"label": "Growth • Household change, 2020–2050", "short": "Household change", "source": "tract", "field": "hh_chg", "kind": "div", "unit": "households", "decimals": 0, "description": "Projected household change between 2020 and 2050."},
-        "jobs_2050": {"label": "Growth • Projected employment, 2050", "short": "Employment (2050)", "source": "tract", "field": "j_2050", "kind": "seq", "palette": SEQ_ORANGE, "unit": "jobs", "decimals": 0, "description": "Projected census tract employment in 2050."},
-        "jobs_growth": {"label": "Growth • Employment change, 2020–2050", "short": "Employment change", "source": "tract", "field": "job_chg", "kind": "div", "unit": "jobs", "decimals": 0, "description": "Projected employment change between 2020 and 2050."},
-        "svi": {"label": "Equity • Social Vulnerability Index, 2020", "short": "SVI (2020)", "source": "tract", "field": "SVI", "kind": "seq", "palette": SEQ_PURPLE, "unit": "percentile", "decimals": 3, "description": "CDC Social Vulnerability Index overall percentile at the census tract level."},
-        "pop_density": {"label": "Equity • Population density, 2020", "short": "Population density", "source": "tract", "field": "pop_den", "kind": "seq", "palette": SEQ_PURPLE, "unit": "source density unit", "decimals": 0, "description": "Provided tract-level population-density field for 2020."},
-        "sf_tract": {"label": "Housing • Single-family housing records, 2020 (tract)", "short": "Single-family records", "source": "tract", "field": "n_single_f", "kind": "seq", "palette": SEQ_TEAL, "unit": "records", "decimals": 0, "description": "Count of provided single-family housing-stock records by tract."},
-        "mf_tract": {"label": "Housing • Multi-family housing records, 2020 (tract)", "short": "Multi-family records", "source": "tract", "field": "n_multi_fa", "kind": "seq", "palette": SEQ_ORANGE, "unit": "records", "decimals": 0, "description": "Count of provided multi-family housing-stock records by tract."},
-        "housing_density": {"label": "Housing • Housing-stock distribution (1 km grid)", "short": "Housing records per cell", "source": "grid", "field": "total_count", "kind": "seq", "palette": SEQ_TEAL, "unit": "records per cell", "decimals": 0, "description": "Full-record density grid calculated from all uploaded single- and multi-family point locations."},
-        "housing_points": {"label": "Housing • Housing-stock point distribution", "short": "Housing-stock locations", "source": "housing_points", "field": "point", "kind": "points", "description": "Viewport-filtered source point locations when run through server.py; the standalone HTML uses a deterministic single-family sample and all multi-family points."},
-        "parcel_hu_change": {"label": "Parcels • Housing-unit change, 2020–2050", "short": "Housing-unit change", "source": "parcel", "field": "hu_change", "kind": "seq", "palette": SEQ_ORANGE, "unit": "housing units", "decimals": 0, "description": "Projected parcel-level housing units in 2050 minus current housing units."},
-        "parcel_current_lu": {"label": "Parcels • Current land use, 2020", "short": "Current land use", "source": "parcel", "field": "current_label", "kind": "cat_land", "description": "Broad current parcel land-use category for parcels with projected housing-unit change by 2050."},
-        "parcel_future_lu": {"label": "Parcels • Future land use, 2050", "short": "Future land use", "source": "parcel", "field": "future_label", "kind": "cat_land", "description": "Broad projected parcel land-use category in 2050 for parcels with housing-unit change."},
+        "chei_2050": {
+            "label": "Composite • Climate Housing Exposure Index, 2050", "short": "CHEI (2050)",
+            "source": "tract", "field": "CHEI_2050", "kind": "seq", "palette": SEQ_BLUE,
+            "unit": "index", "decimals": 3,
+            "description": "The projected census tract-level Climate Housing Exposure Index for Harris County in 2050.",
+        },
+        "chei_2020": {
+            "label": "Composite • Climate Housing Exposure Index, 2020", "short": "CHEI (2020)",
+            "source": "tract", "field": "CHEI_2020", "kind": "seq", "palette": SEQ_BLUE,
+            "unit": "index", "decimals": 3,
+            "description": "The census tract-level Climate Housing Exposure Index for Harris County in 2020.",
+        },
+        "adapt_gap": {
+            "label": "Composite • CHEI adaptation gap, 2020–2050", "short": "CHEI change",
+            "source": "tract", "field": "adapt_gap", "kind": "div", "unit": "index change", "decimals": 3,
+            "description": "The gap in projected census tract-level CHEI in 2050 relative to 2020.",
+        },
+        "hotspot": {
+            "label": "Composite • Compound climate-inequality hotspots, 2050", "short": "Hotspot combination",
+            "source": "tract", "field": "hotspot_combo", "kind": "cat_hotspot",
+            "description": "A census-tract typology showing whether high precipitation, high social vulnerability, and high housing growth occur individually or in combination in 2050.",
+        },
+        "pr_tract": {
+            "label": "Climate • Extreme 3-day precipitation by GMT (tract)", "short": "3-day precipitation",
+            "source": "tract", "field": "pr_dynamic", "kind": "seq", "palette": SEQ_BLUE,
+            "unit": "mm", "decimals": 1,
+            "description": "The average 3-day precipitation sum of extreme events during the 20-year period associated with GMT {gmt}, aggregated to census tracts across all SSP scenarios.",
+        },
+        "pr_change": {
+            "label": "Climate • Precipitation change, GMT 2.5°C vs 1.5°C", "short": "Precipitation change",
+            "source": "tract", "field": "sens_pct", "kind": "seq", "palette": SEQ_PURPLE,
+            "unit": "%", "decimals": 1,
+            "description": "The census tract-level percentage change in the average 3-day precipitation sum of extreme events at GMT +2.5°C relative to GMT +1.5°C.",
+        },
+        "pr_points": {
+            "label": "Climate • GMT model precipitation points", "short": "Model-point precipitation",
+            "source": "climate_points", "field": "precip", "kind": "seq", "palette": SEQ_BLUE,
+            "unit": "mm", "decimals": 1,
+            "description": "The average 3-day precipitation sum of extreme events during the 20-year period at model-point locations under GMT {gmt}, averaged across SSP scenarios.",
+        },
+        "pr_kriging": {
+            "label": "Climate • GMT precipitation kriging surface", "short": "Kriging precipitation",
+            "source": "kriging", "field": "pr_dynamic", "kind": "seq", "palette": SEQ_BLUE,
+            "unit": "mm", "decimals": 1,
+            "description": "A continuous area-level interpolation of the average 3-day precipitation sum of extreme events under GMT {gmt}.",
+        },
+        "pop_2050": {
+            "label": "Growth • Projected population, 2050", "short": "Population (2050)",
+            "source": "tract", "field": "hp_2050", "kind": "seq", "palette": SEQ_TEAL,
+            "unit": "people", "decimals": 0,
+            "description": "The projected census tract-level population count in Harris County in 2050.",
+        },
+        "pop_growth": {
+            "label": "Growth • Population change, 2020–2050", "short": "Population change",
+            "source": "tract", "field": "pop_chg", "kind": "div", "unit": "people", "decimals": 0,
+            "description": "The projected census tract-level population change in 2050 relative to 2020.",
+        },
+        "hh_2050": {
+            "label": "Growth • Projected households, 2050", "short": "Households (2050)",
+            "source": "tract", "field": "hh_2050", "kind": "seq", "palette": SEQ_TEAL,
+            "unit": "households", "decimals": 0,
+            "description": "The projected census tract-level household count in Harris County in 2050.",
+        },
+        "hh_growth": {
+            "label": "Growth • Household change, 2020–2050", "short": "Household change",
+            "source": "tract", "field": "hh_chg", "kind": "div", "unit": "households", "decimals": 0,
+            "description": "The projected census tract-level change in households in 2050 relative to 2020.",
+        },
+        "jobs_2050": {
+            "label": "Growth • Projected employment, 2050", "short": "Employment (2050)",
+            "source": "tract", "field": "j_2050", "kind": "seq", "palette": SEQ_ORANGE,
+            "unit": "jobs", "decimals": 0,
+            "description": "The projected census tract-level employment count in Harris County in 2050.",
+        },
+        "jobs_growth": {
+            "label": "Growth • Employment change, 2020–2050", "short": "Employment change",
+            "source": "tract", "field": "job_chg", "kind": "div", "unit": "jobs", "decimals": 0,
+            "description": "The projected census tract-level change in employment in 2050 relative to 2020.",
+        },
+        "svi": {
+            "label": "Equity • Social Vulnerability Index, 2020", "short": "SVI (2020)",
+            "source": "tract", "field": "SVI", "kind": "seq", "palette": SEQ_PURPLE,
+            "unit": "percentile", "decimals": 3,
+            "description": "The census tract-level Social Vulnerability Index overall percentile in Harris County in 2020.",
+        },
+        "pop_density": {
+            "label": "Equity • Population density, 2020", "short": "Population density",
+            "source": "tract", "field": "pop_den", "kind": "seq", "palette": SEQ_PURPLE,
+            "unit": "source density unit", "decimals": 0,
+            "description": "The provided census tract-level population-density measure for Harris County in 2020.",
+        },
+        "sf_tract": {
+            "label": "Housing • Single-family housing records, 2020 (tract)", "short": "Single-family records",
+            "source": "tract", "field": "n_single_f", "kind": "seq", "palette": SEQ_TEAL,
+            "unit": "records", "decimals": 0,
+            "description": "The count of provided single-family housing-unit records summarized to census tracts in 2020.",
+        },
+        "mf_tract": {
+            "label": "Housing • Multi-family housing records, 2020 (tract)", "short": "Multi-family records",
+            "source": "tract", "field": "n_multi_fa", "kind": "seq", "palette": SEQ_ORANGE,
+            "unit": "records", "decimals": 0,
+            "description": "The count of provided multi-family housing-unit records summarized to census tracts in 2020.",
+        },
+        "housing_density": {
+            "label": "Housing • Housing-stock distribution (1 km grid)", "short": "Housing records per cell",
+            "source": "grid", "field": "total_count", "kind": "seq", "palette": SEQ_TEAL,
+            "unit": "records per cell", "decimals": 0,
+            "description": "A 1 km grid representation of the spatial distribution of provided single-family and multi-family housing records in 2020.",
+        },
+        "housing_points": {
+            "label": "Housing • Housing-stock point distribution", "short": "Housing-stock locations",
+            "source": "housing_points", "field": "point", "kind": "points",
+            "description": "The point-level spatial distribution of provided single-family and multi-family housing records in Harris County in 2020.",
+        },
+        "parcel_hu_change": {
+            "label": "Parcels • Housing-unit change, 2020–2050", "short": "Housing-unit change",
+            "source": "parcel", "field": "hu_change", "kind": "seq", "palette": SEQ_ORANGE,
+            "unit": "housing units", "decimals": 0,
+            "description": "The projected parcel-level change in housing units by 2050 relative to 2020.",
+        },
+        "parcel_current_lu": {
+            "label": "Parcels • Current land use, 2020", "short": "Current land use",
+            "source": "parcel", "field": "current_label", "kind": "cat_land",
+            "description": "The current parcel-level land-use type in 2020 for parcels projected to experience housing-unit change by 2050.",
+        },
+        "parcel_future_lu": {
+            "label": "Parcels • Future land use, 2050", "short": "Future land use",
+            "source": "parcel", "field": "future_label", "kind": "cat_land",
+            "description": "The projected parcel-level land-use type in 2050 for parcels with projected housing-unit change.",
+        },
     }
+
+    layer_details = {
+        "chei_2050": {
+            "source_layer": "harris_census_tract_CHEI_2050; harris_census_tract_climate_housing_exposure_index_2050",
+            "geography": "Census tract", "reference": "2050 projection", "measurement": "Composite index (unitless)",
+            "interpretation": "Higher values identify tracts with greater relative combined climate and housing exposure within Harris County.",
+            "planning_use": "Screen places where climate adaptation, housing resilience, and equity review may need to be coordinated.",
+            "limitation": "CHEI is a composite screening measure. Review its precipitation, housing, growth, and vulnerability components before drawing conclusions.",
+        },
+        "chei_2020": {
+            "source_layer": "harris_census_tract_CHEI_2020", "geography": "Census tract", "reference": "2020 baseline",
+            "measurement": "Composite index (unitless)",
+            "interpretation": "Higher values identify tracts with greater relative baseline climate–housing exposure.",
+            "planning_use": "Establish a baseline for comparison with projected 2050 CHEI conditions.",
+            "limitation": "The index is relative and intended for screening; it does not represent a probability of loss or a site-specific risk assessment.",
+        },
+        "adapt_gap": {
+            "source_layer": "harris_census_tract_CHEI_adaptation_gap_2020_2050", "geography": "Census tract",
+            "reference": "Change from 2020 to 2050", "measurement": "CHEI 2050 minus CHEI 2020",
+            "interpretation": "Positive values indicate a higher modeled CHEI in 2050; negative values indicate a lower modeled index.",
+            "planning_use": "Locate emerging adaptation gaps and distinguish places with increasing versus declining modeled exposure.",
+            "limitation": "The change reflects differences between two composite-index snapshots and should be interpreted together with the underlying component layers.",
+        },
+        "hotspot": {
+            "source_layer": "harris_census_tract_compound_climate_inequality_hotspots_2050", "geography": "Census tract",
+            "reference": "2050 screening typology", "measurement": "Eight categorical condition combinations",
+            "interpretation": "Patterns show which of three high conditions occur together: precipitation hazard, household growth, and social vulnerability.",
+            "planning_use": "Differentiate corrective priorities rooted in existing hazard and vulnerability from preventive priorities associated with future growth.",
+            "limitation": "High conditions use countywide 80th-percentile screening thresholds; they are transparent conventions rather than natural risk discontinuities.",
+        },
+        "pr_tract": {
+            "source_layer": {
+                "15": "harris_census_tract_extreme_precipi_gmt_15", "20": "harris_census_tract_extreme_precipi_gmt_20",
+                "25": "harris_census_tract_extreme_precipi_gmt_25", "30": "harris_census_tract_extreme_precipi_gmt_30",
+            },
+            "geography": "Census tract", "reference": {"15": "GMT +1.5°C", "20": "GMT +2.0°C", "25": "GMT +2.5°C", "30": "GMT +3.0°C"},
+            "measurement": "Average 3-day precipitation sum (mm)",
+            "interpretation": "Higher values indicate larger modeled 3-day precipitation totals for extreme events at the selected warming threshold.",
+            "planning_use": "Compare tract-scale precipitation exposure as warming increases and identify locations for further drainage or resilience review.",
+            "limitation": "Values are modeled 20-year averages across SSP scenarios and do not predict the timing or impact of a specific storm.",
+        },
+        "pr_change": {
+            "source_layer": "harris_census_tract_extreme_precip_gmt_25_vs_15", "geography": "Census tract",
+            "reference": "GMT +2.5°C relative to GMT +1.5°C", "measurement": "Percentage change (%)",
+            "interpretation": "Higher percentages indicate a larger modeled increase in the average extreme 3-day precipitation sum between the two GMT thresholds.",
+            "planning_use": "Screen tracts where precipitation extremes appear more sensitive to additional warming.",
+            "limitation": "A percentage change can appear large when the comparison value is relatively small; review the absolute precipitation layers as well.",
+        },
+        "pr_points": {
+            "source_layer": {
+                "15": "gmt_15_model_pr_ssp_mean", "20": "gmt_20_model_pr_ssp_mean",
+                "25": "gmt_25_model_pr_ssp_mean", "30": "gmt_30_model_pr_ssp_mean",
+            },
+            "geography": "Climate-model point locations", "reference": {"15": "GMT +1.5°C", "20": "GMT +2.0°C", "25": "GMT +2.5°C", "30": "GMT +3.0°C"},
+            "measurement": "Average 3-day precipitation sum (mm)",
+            "interpretation": "Each point displays the modeled precipitation value at an input location for the selected GMT threshold.",
+            "planning_use": "Inspect the spatial support underlying the tract aggregation and interpolation layers.",
+            "limitation": "Point spacing and model-processing choices affect the apparent spatial detail; points should not be treated as parcel-scale observations.",
+        },
+        "pr_kriging": {
+            "source_layer": {"15": "gmt_15_pr_Kriging", "20": "gmt_20_pr_Kriging", "25": "gmt_25_pr_Kriging", "30": "gmt_30_pr_Kriging"},
+            "geography": "Continuous interpolated surface", "reference": {"15": "GMT +1.5°C", "20": "GMT +2.0°C", "25": "GMT +2.5°C", "30": "GMT +3.0°C"},
+            "measurement": "Interpolated average 3-day precipitation sum (mm)",
+            "interpretation": "The surface estimates a continuous precipitation pattern between the climate-model point locations.",
+            "planning_use": "Visualize broad spatial gradients and compare the countywide pattern among GMT thresholds.",
+            "limitation": "The uploaded named kriging rasters were not exposed by the open-source FileGDB reader; this dashboard displays separately identified ordinary-kriging surfaces derived from the uploaded point layers.",
+        },
+        "pop_2050": {
+            "source_layer": "harris_census_tract_population_proj_2050", "geography": "Census tract", "reference": "2050 projection",
+            "measurement": "Projected population count", "interpretation": "Higher values indicate larger projected residential populations.",
+            "planning_use": "Identify future concentrations of residents who may require services, infrastructure, or adaptation investment.",
+            "limitation": "Forecasts describe a planning scenario rather than a guaranteed future population distribution.",
+        },
+        "pop_growth": {
+            "source_layer": "harris_census_tract_population_growth_2020_2050", "geography": "Census tract", "reference": "Change from 2020 to 2050",
+            "measurement": "Projected change in people", "interpretation": "Positive values indicate projected growth; negative values indicate projected decline.",
+            "planning_use": "Locate areas where changing population may alter exposure, service demand, and infrastructure needs.",
+            "limitation": "The layer shows net change and does not distinguish births, deaths, or migration components.",
+        },
+        "hh_2050": {
+            "source_layer": "harris_census_tract_households_proj_2050", "geography": "Census tract", "reference": "2050 projection",
+            "measurement": "Projected household count", "interpretation": "Higher values indicate larger projected concentrations of households.",
+            "planning_use": "Assess the future spatial concentration of residential demand and potential housing exposure.",
+            "limitation": "Household projections are scenario-based and should be reviewed with local planning assumptions.",
+        },
+        "hh_growth": {
+            "source_layer": "harris_census_tract_household_growth_2020_2050", "geography": "Census tract", "reference": "Change from 2020 to 2050",
+            "measurement": "Projected change in households", "interpretation": "Positive values indicate projected household growth; the hotspot typology treats growth of at least 746 households as high.",
+            "planning_use": "Identify locations where future residential development may create preventive adaptation needs.",
+            "limitation": "The layer shows projected net household change and does not by itself describe housing type, affordability, or development timing.",
+        },
+        "jobs_2050": {
+            "source_layer": "harris_census_tract_employment_proj_2050", "geography": "Census tract", "reference": "2050 projection",
+            "measurement": "Projected employment count", "interpretation": "Higher values indicate larger projected workplace concentrations.",
+            "planning_use": "Screen future employment centers for infrastructure continuity and climate-resilience needs.",
+            "limitation": "Employment forecasts are planning projections and do not identify industry, shift, or worker-residence patterns.",
+        },
+        "jobs_growth": {
+            "source_layer": "harris_census_tract_employment_growth_2020_2050", "geography": "Census tract", "reference": "Change from 2020 to 2050",
+            "measurement": "Projected change in jobs", "interpretation": "Positive values indicate projected employment growth; negative values indicate decline.",
+            "planning_use": "Identify places where future economic growth may change exposure and infrastructure demand.",
+            "limitation": "The layer reports net change and does not distinguish employment sectors or job quality.",
+        },
+        "svi": {
+            "source_layer": "harris_census_tract_social_vulnerability_index_2020", "geography": "Census tract", "reference": "2020 baseline",
+            "measurement": "Overall SVI percentile (0–1)", "interpretation": "Higher percentiles indicate greater relative social vulnerability; the hotspot typology treats SVI of at least 0.88386 as high.",
+            "planning_use": "Support equity-focused screening and identify communities that may face greater challenges preparing for or recovering from hazards.",
+            "limitation": "SVI is a relative index and should be supplemented with local knowledge and current demographic information.",
+        },
+        "pop_density": {
+            "source_layer": "harris_census_tract_pop_density_2020", "geography": "Census tract", "reference": "2020 baseline",
+            "measurement": "Source-provided population-density value", "interpretation": "Higher values indicate greater population concentration within the source density definition.",
+            "planning_use": "Contextualize exposure intensity and potential evacuation, shelter, or service demand.",
+            "limitation": "Confirm the denominator and density unit in the authoritative source documentation before quantitative comparison outside this dashboard.",
+        },
+        "sf_tract": {
+            "source_layer": "harris_census_tract_single_family_units_2020", "geography": "Census tract", "reference": "2020 baseline",
+            "measurement": "Count of provided single-family records", "interpretation": "Higher values indicate larger concentrations of the provided single-family housing stock.",
+            "planning_use": "Compare housing-form exposure and identify areas where property-level resilience outreach may be important.",
+            "limitation": "Counts reflect the provided housing records and should not be interpreted as a complete building-condition or occupancy inventory.",
+        },
+        "mf_tract": {
+            "source_layer": "harris_census_tract_multi_family_units_2020", "geography": "Census tract", "reference": "2020 baseline",
+            "measurement": "Count of provided multi-family records", "interpretation": "Higher values indicate larger concentrations of the provided multi-family housing stock.",
+            "planning_use": "Identify locations where building-scale, renter-focused, or multifamily resilience strategies may be relevant.",
+            "limitation": "Counts reflect the provided records and do not describe building condition, unit occupancy, tenure, or resident vulnerability.",
+        },
+        "housing_density": {
+            "source_layer": "Derived from harris_single_family_2020 and harris_multi_family_2020", "geography": "1 km grid cell", "reference": "2020 baseline",
+            "measurement": "Housing records per grid cell", "interpretation": "Higher cell counts indicate greater concentrations of the selected housing-stock type.",
+            "planning_use": "View countywide housing concentration without drawing every source point and compare single-family and multi-family distributions.",
+            "limitation": "Grid aggregation smooths point locations and depends on the chosen 1 km cell size.",
+        },
+        "housing_points": {
+            "source_layer": "harris_single_family_2020; harris_multi_family_2020", "geography": "Point locations", "reference": "2020 baseline",
+            "measurement": "Provided housing-record locations", "interpretation": "Points show the spatial distribution of the selected housing-stock type.",
+            "planning_use": "Inspect fine-scale housing-stock patterns and local concentrations within the map viewport.",
+            "limitation": "The standalone HTML uses a deterministic single-family sample plus all multi-family points; run server.py for viewport-filtered access to the complete point inventory.",
+        },
+        "parcel_hu_change": {
+            "source_layer": "harris_housing_unit_change_2020_2050", "geography": "Parcel", "reference": "Change from 2020 to 2050",
+            "measurement": "Projected change in housing units", "interpretation": "Positive values indicate projected net additions in housing units by 2050 relative to 2020.",
+            "planning_use": "Identify fine-scale development pressure, redevelopment opportunities, and locations where resilience measures can be integrated into growth.",
+            "limitation": "Only parcels represented in the projected housing-change data are shown; projections do not guarantee that a specific project will occur.",
+        },
+        "parcel_current_lu": {
+            "source_layer": "harris_current_land_use_2020", "geography": "Parcel", "reference": "2020 baseline",
+            "measurement": "Categorical land-use type", "interpretation": "Colors identify current land-use categories for parcels projected to experience housing-unit change by 2050.",
+            "planning_use": "Understand the baseline development context before examining projected land-use transitions.",
+            "limitation": "The view is limited to parcels with projected housing-unit change and is not a complete countywide 2020 land-use inventory.",
+        },
+        "parcel_future_lu": {
+            "source_layer": "harris_future_land_use_2050", "geography": "Parcel", "reference": "2050 projection",
+            "measurement": "Categorical projected land-use type", "interpretation": "Colors identify projected 2050 land-use categories for parcels with housing-unit change.",
+            "planning_use": "Examine where future development patterns may intersect climate exposure and housing-resilience needs.",
+            "limitation": "The view is a projection for changing parcels, not a development entitlement or parcel-specific construction forecast.",
+        },
+    }
+
     layer_guidance = {
         "chei_2050": ["Geography: census tracts; projection year: 2050.", "Higher values indicate greater combined climate–housing exposure.", "Use for integrated adaptation and housing-resilience screening."],
         "chei_2020": ["Geography: census tracts; baseline year: 2020.", "Higher values indicate greater baseline combined exposure.", "Use as a reference for comparison with 2050 conditions."],
@@ -535,11 +808,11 @@ def build_dashboard() -> None:
         "hotspot": ["One point is assigned for each high condition; the score is noncompensatory.", "Diagonal lines denote precipitation hazard, vertical lines denote household growth, and dots denote social vulnerability.", "Overlaid patterns preserve all eight combinations without relying on color alone."],
         "pr_tract": ["Geography: census tracts; switch among four GMT thresholds.", "Values represent average three-day totals for modeled extreme events.", "Use to compare the spatial pattern of precipitation hazard as warming increases."],
         "pr_change": ["Compares GMT +2.5°C with GMT +1.5°C.", "Higher percentages indicate larger modeled increases in extreme precipitation.", "Use to screen climate-sensitivity patterns across tracts."],
-        "pr_points": ["Geography: 246 climate-model points per GMT threshold.", "Point values are the inputs underlying tract summaries and interpolation.", "Use to inspect the spatial support of the climate layer."],
+        "pr_points": ["Geography: climate-model point locations.", "Point values are the inputs underlying tract summaries and interpolation.", "Use to inspect the spatial support of the climate layer."],
         "pr_kriging": ["Continuous display surface derived from the uploaded model points.", "Select a GMT threshold to compare interpolated precipitation patterns.", "Use for visualization; consult original points and tract values for verification."],
         "pop_2050": ["Geography: census tracts; projection year: 2050.", "Darker tracts contain more projected residents.", "Use to locate future population exposure and service demand."],
         "pop_growth": ["Change is calculated from 2020 to 2050.", "Positive values indicate projected growth; negative values indicate decline.", "Use to identify where future development pressure may alter exposure."],
-        "hh_2050": ["Geography: census tracts; projection year: 2050.", "Values represent projected occupied households.", "Use to assess future residential concentration."],
+        "hh_2050": ["Geography: census tracts; projection year: 2050.", "Values represent projected households.", "Use to assess future residential concentration."],
         "hh_growth": ["Change is calculated from 2020 to 2050.", "The compound-hotspot typology treats growth of at least 746 households as high.", "Use to identify preventive adaptation needs created by future development."],
         "jobs_2050": ["Geography: census tracts; projection year: 2050.", "Values represent projected employment counts.", "Use to assess future workplace and economic exposure."],
         "jobs_growth": ["Change is calculated from 2020 to 2050.", "Positive values indicate projected employment growth.", "Use to screen future infrastructure and continuity-planning needs."],
@@ -554,6 +827,7 @@ def build_dashboard() -> None:
         "parcel_future_lu": ["Shows projected 2050 land-use categories for changing parcels.", "Compare with the 2020 layer to interpret land-use transitions.", "Use for long-range growth and resilience planning."],
     }
     for key, meta in layer_meta.items():
+        meta.update(layer_details[key])
         meta["bullets"] = layer_guidance[key]
 
     layer_select = Select(title="Primary map layer", value="chei_2050", options=[(k, v["label"]) for k, v in layer_meta.items()], width=CONTROL_CONTENT_WIDTH, name="primary_layer_select")
@@ -591,19 +865,19 @@ def build_dashboard() -> None:
     reset_button = Button(label="Reset map extent", width=CONTROL_CONTENT_WIDTH)
     init_trigger = Toggle(active=False, visible=False, name="dashboard_init_trigger", width=1, height=1)
 
-    legend_div = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=180, css_classes=["chei-panel", "legend-panel"])
+    legend_div = Div(text="", width=CONTROL_CONTENT_WIDTH, css_classes=["chei-panel", "legend-panel"])
     legend_filter_status = Div(
         text="<span class='legend-help'>Click one legend class to highlight matching features.</span>",
-        width=CONTROL_CONTENT_WIDTH, min_height=52, css_classes=["legend-filter-status"], name="legend_filter_status",
+        width=CONTROL_CONTENT_WIDTH, css_classes=["legend-filter-status"], name="legend_filter_status",
     )
-    layer_info = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=175, css_classes=["chei-panel", "info-panel"])
-    overlap_summary = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=165, visible=False, css_classes=["chei-panel", "overlap-panel"])
-    point_status = Div(text="", width=MAP_PLOT_WIDTH, min_height=42, css_classes=["map-status"])
-    map_guide = Div(text="", width=MAP_PLOT_WIDTH, min_height=180, css_classes=["map-guide-wrapper"])
-    map_actions = Div(text="", width=MAP_PLOT_WIDTH, min_height=175, css_classes=["map-actions-wrapper"])
-    search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=28, css_classes=["search-status"])
-    zip_search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=42, css_classes=["search-status", "zip-search-status"])
-    precinct_search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=42, css_classes=["search-status", "precinct-search-status"])
+    layer_info = Div(text="", width=ANALYSIS_DETAIL_WIDTH, css_classes=["chei-panel", "info-panel", "analysis-card"])
+    overlap_summary = Div(text="", width=CONTROL_CONTENT_WIDTH, visible=False, css_classes=["chei-panel", "overlap-panel"])
+    point_status = Div(text="", width=MAP_PLOT_WIDTH, css_classes=["map-status"])
+    map_guide = Div(text="", width=MAP_PLOT_WIDTH, css_classes=["map-guide-wrapper"])
+    map_actions = Div(text="", width=ANALYSIS_ACTION_WIDTH, css_classes=["map-actions-wrapper", "analysis-card"])
+    search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, css_classes=["search-status"])
+    zip_search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, css_classes=["search-status", "zip-search-status"])
+    precinct_search_status = Div(text="", width=CONTROL_CONTENT_WIDTH, css_classes=["search-status", "precinct-search-status"])
 
     quick_exposure_button = Button(label="Highest overall exposure", button_type="primary", width=178, height=54, css_classes=["quick-action"], name="quick_exposure_button")
     quick_overlap_button = Button(label="Three-factor overlap", width=178, height=54, css_classes=["quick-action"], name="quick_overlap_button")
@@ -611,7 +885,7 @@ def build_dashboard() -> None:
     quick_selected_button = Button(label="Selected-place conditions", width=178, height=54, css_classes=["quick-action"], name="quick_selected_button")
     quick_decision_status = Div(
         text="<div class='quick-status'><b>Choose a decision question.</b><p>The dashboard will activate an appropriate layer and focus the most relevant class or selected geography.</p></div>",
-        width=INSIGHT_CONTENT_WIDTH, min_height=92, css_classes=["quick-decision-status"], name="quick_decision_status",
+        width=INSIGHT_CONTENT_WIDTH, css_classes=["quick-decision-status"], name="quick_decision_status",
     )
     report_geography = Select(
         title="Geography for one-page report", value="tract",
@@ -621,13 +895,13 @@ def build_dashboard() -> None:
     report_button = Button(label="Generate one-page decision brief", button_type="primary", width=INSIGHT_CONTENT_WIDTH, height=42, name="report_button")
     report_status = Div(
         text="<span class='locator-note'>Select a geography, then open a print-ready brief that can be saved as PDF.</span>",
-        width=INSIGHT_CONTENT_WIDTH, min_height=52, css_classes=["report-status"], name="report_status",
+        width=INSIGHT_CONTENT_WIDTH, css_classes=["report-status"], name="report_status",
     )
 
     initial_values = np.asarray(tract_data["CHEI_2050"], dtype=float)
     counts, edges = np.histogram(initial_values[np.isfinite(initial_values)], bins=12)
     hist_source = ColumnDataSource({"left": edges[:-1], "right": edges[1:], "top": counts, "color": [SEQ_BLUE[3]] * len(counts)})
-    hist_plot = figure(height=235, width=CONTROL_CONTENT_WIDTH, title="Distribution across census tracts", tools="", toolbar_location=None, min_border_left=54, min_border_right=18, min_border_bottom=58)
+    hist_plot = figure(height=282, width=ANALYSIS_HIST_WIDTH, title="Distribution across census tracts", tools="", toolbar_location=None, min_border_left=58, min_border_right=22, min_border_bottom=60)
     hist_plot.quad(left="left", right="right", top="top", bottom=0, source=hist_source, fill_color="color", fill_alpha=0.85, line_color="#ffffff")
     hist_plot.background_fill_color = "#ffffff"
     hist_plot.outline_line_color = "#d9e2e8"
@@ -640,7 +914,7 @@ def build_dashboard() -> None:
     hist_plot.yaxis.axis_label_text_font_size = "9pt"
     hist_plot.xaxis.major_label_text_font_size = "8pt"
     hist_plot.yaxis.major_label_text_font_size = "8pt"
-    hist_summary = Div(text="", width=CONTROL_CONTENT_WIDTH, min_height=50, css_classes=["hist-summary"])
+    hist_summary = Div(text="", width=ANALYSIS_HIST_WIDTH, css_classes=["hist-summary", "analysis-card"])
 
     # Static initial state; the shared JavaScript callback updates these after
     # the first user interaction.
@@ -657,22 +931,22 @@ def build_dashboard() -> None:
             label = f"{lows[i]:.3f} – {highs[i]:.3f}"
         legend_rows.append(f"<div class='legend-row'><span style='background:{color}'></span><b>{label}</b></div>")
     legend_div.text = "<div class='panel-eyebrow'>MAP LEGEND</div><h4>Climate Housing Exposure Index, 2050</h4>" + "".join(legend_rows) + "<div class='legend-unit'>index</div>"
-    layer_info.text = "<div class='panel-eyebrow'>ABOUT THIS LAYER</div><h4>Climate Housing Exposure Index, 2050</h4><p>Projected tract-level CHEI for 2050, combining precipitation hazard, projected housing exposure, and social vulnerability.</p><ul class='layer-bullets'><li>Geography: census tracts; projection year: 2050.</li><li>Higher values indicate greater combined climate–housing exposure.</li><li>Use for integrated adaptation and housing-resilience screening.</li></ul>"
+    layer_info.text = """<div class='panel-eyebrow'>LAYER REFERENCE</div><div class='layer-info-head'><div><h3>Climate Housing Exposure Index, 2050</h3><p>The projected census tract-level Climate Housing Exposure Index for Harris County in 2050.</p></div><span class='layer-geo-badge'>Census tract</span></div><div class='layer-facts-grid'><div><span>Source layer</span><code>harris_census_tract_CHEI_2050; harris_census_tract_climate_housing_exposure_index_2050</code></div><div><span>Reference period</span><b>2050 projection</b></div><div><span>Measurement</span><b>Composite index (unitless)</b></div></div><div class='layer-detail-grid'><section><h5>How to interpret</h5><p>Higher values identify tracts with greater relative combined climate and housing exposure within Harris County.</p></section><section><h5>Potential planning use</h5><p>Screen places where climate adaptation, housing resilience, and equity review may need to be coordinated.</p></section><section class='layer-caution'><h5>Important limitation</h5><p>CHEI is a composite screening measure. Review its precipitation, housing, growth, and vulnerability components before drawing conclusions.</p></section></div>"""
     hist_summary.text = f"<p><strong>Median:</strong> {np.nanmedian(initial_values):.3f} &nbsp; <strong>Range:</strong> {np.nanmin(initial_values):.3f} to {np.nanmax(initial_values):.3f}</p>"
     point_status.text = '<span class="status-dot"></span>Click a census tract to update the profile panel, or use the ZIP-code locator to zoom to a familiar area.'
-    map_guide.text = "<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>Climate Housing Exposure Index, 2050</h3></div><div class='guide-grid'><div><b>What it shows</b><p>Projected combined exposure at the census-tract level.</p></div><div><b>How to read it</b><p>Darker blues indicate higher CHEI values relative to other Harris County tracts.</p></div><div><b>Planning use</b><p>Screen locations for coordinated climate adaptation and housing-resilience review.</p></div></div></div>"
+    map_guide.text = "<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>Climate Housing Exposure Index, 2050</h3></div><div class='guide-grid'><div><b>Geography &amp; time</b><p>Census tract · 2050 projection</p></div><div><b>Measurement</b><p>Composite index (unitless)</p></div><div><b>Interpretation</b><p>Higher values identify greater relative combined climate and housing exposure.</p></div><div><b>Planning use</b><p>Support coordinated adaptation, housing-resilience, and equity screening.</p></div></div></div>"
     map_actions.text = "<div class='action-panel'><div class='action-heading'><span>FROM MAP TO USE</span><h3>A three-step exploratory workflow</h3></div><div class='action-grid'><div><i>1</i><b>Screen</b><p>Locate tracts with higher relative CHEI values.</p></div><div><i>2</i><b>Diagnose</b><p>Click a tract and compare its climate and growth profile.</p></div><div><i>3</i><b>Validate</b><p>Confirm findings with authoritative local data before action.</p></div></div></div>"
 
     initial_idx = int(np.nanargmax(np.asarray(tract_data["CHEI_2050"], dtype=float)))
     tract_source.selected.indices = [initial_idx]
     t0 = tracts.iloc[initial_idx]
-    selected_div = Div(width=INSIGHT_CONTENT_WIDTH, min_height=278, css_classes=["chei-panel", "selected-panel"])
+    selected_div = Div(width=ANALYSIS_SELECTED_WIDTH, css_classes=["chei-panel", "selected-panel", "analysis-card"])
 
     climate_profile_source = ColumnDataSource({
         "gmt": [1.5, 2.0, 2.5, 3.0],
         "precip": [float(t0["pr_15"]), float(t0["pr_20"]), float(t0["pr_25"]), float(t0["pr_30"])],
     })
-    climate_profile = figure(height=230, width=INSIGHT_CONTENT_WIDTH, title="Selected tract: precipitation by GMT", tools="", toolbar_location=None)
+    climate_profile = figure(height=278, width=ANALYSIS_HIST_WIDTH, title="Selected tract: precipitation by GMT", tools="", toolbar_location=None)
     climate_profile.line(x="gmt", y="precip", source=climate_profile_source, line_width=3, color=TEAL)
     climate_profile.scatter(x="gmt", y="precip", source=climate_profile_source, size=9, color=GOLD, line_color=NAVY)
     climate_profile.xaxis.axis_label = "GMT increase relative to 1850–1899 (°C)"
@@ -687,7 +961,7 @@ def build_dashboard() -> None:
         "v2020": [float(t0["hp_2020"]), float(t0["hh_2020"]), float(t0["j_2020"])],
         "v2050": [float(t0["hp_2050"]), float(t0["hh_2050"]), float(t0["j_2050"])],
     })
-    profile_plot = figure(x_range=["Population", "Households", "Employment"], height=255, width=INSIGHT_CONTENT_WIDTH, title="Selected tract: 2020 and 2050", tools="", toolbar_location=None)
+    profile_plot = figure(x_range=["Population", "Households", "Employment"], height=278, width=ANALYSIS_SELECTED_WIDTH, title="Selected tract: 2020 and 2050", tools="", toolbar_location=None)
     profile_plot.vbar(x=dodge("category", -0.17, range=profile_plot.x_range), top="v2020", width=0.31, source=profile_source, color="#6BAED6", legend_label="2020")
     profile_plot.vbar(x=dodge("category", 0.17, range=profile_plot.x_range), top="v2050", width=0.31, source=profile_source, color=GOLD, legend_label="2050")
     profile_plot.yaxis.formatter = NumeralTickFormatter(format="0,0")
@@ -827,16 +1101,39 @@ function legendHotspot(arr) {
     `<div><b>Social vulnerability</b><span>SVI ≥ 0.88386</span></div></div>` +
     `<div class='legend-subtitle'>CONDITION COMBINATION · TRACT COUNT</div>${rows}`;
 }
+function selectedGMTText() {
+  return ({'15':'+1.5°C','20':'+2.0°C','25':'+2.5°C','30':'+3.0°C'})[String(gmt_select.value)] || '+2.5°C';
+}
+function detailValue(meta, field) {
+  let value = meta[field];
+  if (value && typeof value === 'object' && !Array.isArray(value)) {
+    value = value[String(gmt_select.value)] ?? value.default ?? '';
+  }
+  return String(value == null ? '' : value).replaceAll('{gmt}', selectedGMTText());
+}
 function layerInfoHTML(meta) {
-  const bullets = (meta.bullets || []).map(x => `<li>${esc(x)}</li>`).join('');
-  return `<div class='panel-eyebrow'>ABOUT THIS LAYER</div><h4>${esc(titleOf(meta))}</h4><p>${esc(meta.description)}</p><ul class='layer-bullets'>${bullets}</ul>`;
+  const source = detailValue(meta, 'source_layer');
+  const geography = detailValue(meta, 'geography');
+  const reference = detailValue(meta, 'reference');
+  const measurement = detailValue(meta, 'measurement');
+  const interpretation = detailValue(meta, 'interpretation');
+  const planning = detailValue(meta, 'planning_use');
+  const limitation = detailValue(meta, 'limitation');
+  const description = detailValue(meta, 'description');
+  return `<div class='panel-eyebrow'>LAYER REFERENCE</div>` +
+    `<div class='layer-info-head'><div><h3>${esc(titleOf(meta))}</h3><p>${esc(description)}</p></div><span class='layer-geo-badge'>${esc(geography)}</span></div>` +
+    `<div class='layer-facts-grid'><div><span>Source layer</span><code>${esc(source)}</code></div>` +
+    `<div><span>Reference period</span><b>${esc(reference)}</b></div><div><span>Measurement</span><b>${esc(measurement)}</b></div></div>` +
+    `<div class='layer-detail-grid'><section><h5>How to interpret</h5><p>${esc(interpretation)}</p></section>` +
+    `<section><h5>Potential planning use</h5><p>${esc(planning)}</p></section>` +
+    `<section class='layer-caution'><h5>Important limitation</h5><p>${esc(limitation)}</p></section></div>`;
 }
 function mapGuideHTML(meta) {
-  const b = meta.bullets || [];
   return `<div class='map-guide'><div class='guide-heading'><span>READING THE CURRENT LAYER</span><h3>${esc(titleOf(meta))}</h3></div>` +
-    `<div class='guide-grid'><div><b>Scope</b><p>${esc(b[0]||meta.description)}</p></div>` +
-    `<div><b>Interpretation</b><p>${esc(b[1]||'Compare values and patterns across Harris County.')}</p></div>` +
-    `<div><b>Planning use</b><p>${esc(b[2]||'Use as an exploratory screening layer and verify with authoritative local data.')}</p></div></div></div>`;
+    `<div class='guide-grid'><div><b>Geography & time</b><p>${esc(detailValue(meta,'geography'))} · ${esc(detailValue(meta,'reference'))}</p></div>` +
+    `<div><b>Measurement</b><p>${esc(detailValue(meta,'measurement'))}</p></div>` +
+    `<div><b>Interpretation</b><p>${esc(detailValue(meta,'interpretation'))}</p></div>` +
+    `<div><b>Planning use</b><p>${esc(detailValue(meta,'planning_use'))}</p></div></div></div>`;
 }
 function actionHTML(meta, id) {
   if (id === 'hotspot') {
@@ -1331,6 +1628,37 @@ toggle.label=toggle.active?'Hide all commissioner precinct boundaries':'Show all
 
     reset_button.js_on_click(CustomJS(args=dict(xr=map_plot.x_range, yr=map_plot.y_range), code=f"xr.start={minx-padx};xr.end={maxx+padx};yr.start={miny-pady};yr.end={maxy+pady};"))
 
+    map_workspace_tip = Div(text="""
+    <div class='workspace-help'>
+      <div><span>MAP INTERACTION</span><b>Move from overview to place</b></div>
+      <ol><li>Use the legend or a Quick Decision question to focus a class.</li><li>Pan, zoom, or use a tract, ZIP-code, or precinct locator.</li><li>Click a census tract to populate the analysis band below.</li></ol>
+    </div>
+    """, width=MAP_PLOT_WIDTH, css_classes=["workspace-help-wrapper"])
+
+    quick_help = Div(text="""
+    <div class='decision-help'>
+      <div class='panel-eyebrow'>HOW QUICK DECISION WORKS</div>
+      <p>Each question activates a relevant map layer and focuses a decision-oriented class. The full layer explorer remains available for deeper review.</p>
+      <div class='mini-workflow'><span><b>1</b>Choose</span><span><b>2</b>Focus</span><span><b>3</b>Review</span></div>
+    </div>
+    """, width=INSIGHT_CONTENT_WIDTH)
+
+    report_scope_help = Div(text="""
+    <div class='decision-help report-help'>
+      <div class='panel-eyebrow'>REPORT SCOPE</div>
+      <p><b>Census tract:</b> exact tract values.</p>
+      <p><b>ZIP code or precinct:</b> a screening summary of intersecting census tracts, not an official aggregate.</p>
+    </div>
+    """, width=INSIGHT_CONTENT_WIDTH)
+
+    analysis_note = Div(text="""
+    <div class='insight-note analysis-note'>
+      <b>Interpretation and validation reminder</b>
+      <p>The dashboard is designed for screening and exploration. Modeled, estimated, and projected values should be checked against authoritative local data before decisions are made.</p>
+      <ul><li>Use the layer reference to confirm geography, period, and measurement.</li><li>Use the distribution to understand the countywide context.</li><li>Use selected-tract charts to compare climate and growth conditions.</li><li>Use the one-page brief to communicate findings with an explicit limitation statement.</li></ul>
+    </div>
+    """, width=ANALYSIS_NOTE_WIDTH, css_classes=["analysis-card"])
+
     header = Div(text=f"""
     <header class='site-header'>
       <div class='brand-mark'><div class='county-shape'>HC</div></div>
@@ -1382,67 +1710,100 @@ toggle.label=toggle.active?'Hide all commissioner precinct boundaries':'Show all
         Div(text="<div class='section-title top-space'><span>05</span> Locate a commissioner precinct</div>", width=CONTROL_CONTENT_WIDTH),
         row(precinct_select, precinct_find_button, width=CONTROL_CONTENT_WIDTH),
         precinct_search_status, show_all_precinct_toggle, reset_button,
-        legend_div, legend_filter_status, layer_info, hist_plot, hist_summary,
+        legend_div, legend_filter_status,
         width=CONTROL_COLUMN_WIDTH, css_classes=["controls-column"],
     )
-    map_column = column(map_plot, point_status, map_guide, map_actions, width=MAP_COLUMN_WIDTH, css_classes=["map-column"])
+    map_column = column(
+        map_plot, point_status, map_workspace_tip, map_guide,
+        width=MAP_COLUMN_WIDTH, css_classes=["map-column"],
+    )
     insights = column(
         Div(text="<div class='insight-section-title'><span>QUICK DECISION VIEW</span><h3>Start with a planning question</h3></div>", width=INSIGHT_CONTENT_WIDTH),
         row(quick_exposure_button, quick_overlap_button, width=INSIGHT_CONTENT_WIDTH),
         row(quick_adaptation_button, quick_selected_button, width=INSIGHT_CONTENT_WIDTH),
-        quick_decision_status, selected_div,
+        quick_decision_status, quick_help,
         Div(text="<div class='insight-section-title report-title'><span>ONE-PAGE DECISION BRIEF</span><h3>Turn the dashboard into a shareable tool</h3></div>", width=INSIGHT_CONTENT_WIDTH),
-        report_geography, report_button, report_status,
-        climate_profile, profile_plot,
-        Div(text="<div class='insight-note'><b>Interpretation reminder</b><p>This dashboard supports screening and exploration. Modeled and projected values should be validated with authoritative local data before decisions are made.</p><ul><li>Click a legend class to locate matches.</li><li>Click a tract for its exact profile.</li><li>Locate familiar areas by ZIP code or commissioner precinct.</li><li>Generate a print-ready decision brief for a selected geography.</li></ul></div>", width=INSIGHT_CONTENT_WIDTH),
+        report_geography, report_button, report_status, report_scope_help,
         width=INSIGHTS_COLUMN_WIDTH, css_classes=["insights-column"],
     )
     explore_row = row(controls, map_column, insights, width=PAGE_WIDTH, css_classes=["explore-row"])
-    explore_layout = column(kpis, explore_row, width=PAGE_WIDTH, css_classes=["explore-layout"])
+
+    analysis_title = Div(text="""
+      <div class='analysis-heading'><span>06</span><div><b>Understand the current layer and selected place</b><small>Reference details, countywide distribution, tract profile, comparison charts, and interpretation guidance</small></div></div>
+    """, width=PAGE_WIDTH, css_classes=["analysis-title"])
+    analysis_row_primary = row(
+        layer_info,
+        column(hist_plot, hist_summary, width=ANALYSIS_HIST_WIDTH, css_classes=["analysis-stack"]),
+        selected_div,
+        width=PAGE_WIDTH, css_classes=["analysis-row", "analysis-row-primary"],
+    )
+    analysis_row_secondary = row(
+        map_actions, climate_profile, profile_plot,
+        width=PAGE_WIDTH, css_classes=["analysis-row", "analysis-row-secondary"],
+    )
+    analysis_row_actions = row(
+        analysis_note,
+        width=PAGE_WIDTH, css_classes=["analysis-row", "analysis-row-actions"],
+    )
+    analysis_band = column(
+        analysis_title, analysis_row_primary, analysis_row_secondary, analysis_row_actions,
+        width=PAGE_WIDTH, css_classes=["analysis-band"],
+    )
+    explore_layout = column(kpis, explore_row, analysis_band, width=PAGE_WIDTH, css_classes=["explore-layout"])
 
     inventory_rows = "".join(
         f"<tr><td><code>{html_lib.escape(str(r.gdb_layer))}</code></td><td>{int(r.feature_count):,}</td><td>{html_lib.escape(str(r.geometry_type))}</td></tr>"
         for r in inventory.itertuples(index=False)
     )
     methods_html = f"""
-    <div class='content-page'>
+    <div class='content-page methods-page'>
       <div class='content-eyebrow'>DATA &amp; METHODS</div>
       <h2>Dashboard architecture and reproducibility</h2>
+      <p class='content-lead'>The dashboard combines climate, housing, growth, vulnerability, parcel, and boundary data while retaining the original analytical geography of each source layer.</p>
       <div class='method-grid'>
         <section><h3>Climate precipitation</h3><p>Four GMT thresholds—1.5°C, 2.0°C, 2.5°C, and 3.0°C relative to 1850–1899—are available as model points and tract aggregations. The uploaded GDB did not expose the four named kriging rasters to the open-source FileGDB reader, so the preprocessing script derives ordinary-kriging display surfaces and records fitted semivariogram parameters.</p></section>
         <section><h3>Exposure and growth</h3><p>Tract geometry is consolidated once and joined to CHEI, SVI, precipitation, population, household, employment, and compound-hotspot attributes. Parcel housing-unit changes are spatially aggregated to tracts for overlap analysis.</p></section>
         <section><h3>Housing-stock performance</h3><p>The package retains all {counts_report['single_family_points']:,} single-family and {counts_report['multi_family_points']:,} multi-family source points in sorted NumPy arrays. The full server returns viewport-filtered points; the standalone HTML uses a complete 1 km density grid and representative point sample.</p></section>
-        <section><h3>Geographic location and reporting</h3><p>The revised geodatabase includes {counts_report['zip_codes']:,} Harris County ZIP-code boundaries and {counts_report['commissioner_precincts']:,} commissioner precincts. Users can locate and outline either geography, optionally display all boundaries, and generate tract-based screening summaries without creating official ZIP- or precinct-level source aggregates.</p></section>
-        <section><h3>Interactive legends and compound screening</h3><p>Every displayed legend class can be selected individually to highlight and zoom to matching tracts, parcels, cells, or points. For kriging surfaces, the clicked class locates census tracts in the corresponding precipitation range. The compound-hotspot typology is noncompensatory and retains all eight combinations generated by three countywide 80th-percentile conditions: GMT +2.5°C precipitation ≥ 203.603 mm, household growth ≥ 746, and SVI ≥ 0.88386. Diagonal lines represent hazard, vertical lines represent growth, and dots represent social vulnerability, allowing combinations to be interpreted without relying on color alone. A separate bivariate tool lets users select two factors and test alternative percentile cutoffs.</p></section>
+        <section><h3>Geographic location</h3><p>The geodatabase includes {counts_report['zip_codes']:,} Harris County ZIP-code boundaries and {counts_report['commissioner_precincts']:,} commissioner precincts. Users can locate, outline, and optionally display all boundaries without creating official ZIP- or precinct-level source aggregates.</p></section>
+        <section><h3>Interactive screening</h3><p>Every displayed legend class can be selected individually to highlight and zoom to matching tracts, parcels, cells, or points. For kriging surfaces, a clicked class locates census tracts in the corresponding precipitation range. A separate bivariate tool supports alternative percentile cutoffs.</p></section>
+        <section><h3>Decision support and reporting</h3><p>Four Quick Decision questions provide low-barrier entry points. One-page reports use exact values for a selected tract and transparent median, range, and high-condition summaries for tracts intersecting a ZIP code or commissioner precinct.</p></section>
       </div>
       <div class='notice'><b>Data audit.</b> The geodatabase contains {report['available_vector_layers']} exposed vector layers, including <code>Harris_County_Zipcodes</code> and <code>Harris_County_Commissioner_Precincts</code>. These boundaries support location, orientation, and transparent tract-based screening summaries; no official ZIP- or precinct-level aggregation is created. The two CHEI 2050 feature classes have identical index values and are consolidated. The supplied tract precipitation inventory uses “extreme_precipi,” whereas the actual GDB layer names use “extreme_precip.”</div>
-      <h3>Uploaded geodatabase inventory</h3>
-      <div class='table-wrap'><table class='data-table'><thead><tr><th>Layer</th><th>Features</th><th>Geometry</th></tr></thead><tbody>{inventory_rows}</tbody></table></div>
-      <h3>Source organizations</h3>
-      <p class='source-links'><a href='https://www.depts.ttu.edu/csc/' target='_blank'>Texas Tech University Climate Center</a> · <a href='https://www.h-gac.com/regional-growth-forecast' target='_blank'>H-GAC Regional Growth Forecast</a> · <a href='https://datalab.h-gac.com/rluis/' target='_blank'>H-GAC Land Use Dashboard</a> · <a href='https://hcad.org/hcad-online-services/pdata/' target='_blank'>Harris Central Appraisal District</a> · <a href='https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html' target='_blank'>CDC/ATSDR SVI</a></p>
+      <div class='methods-lower-grid'>
+        <section class='inventory-section'><h3>Uploaded geodatabase inventory</h3><div class='table-wrap'><table class='data-table'><thead><tr><th>Layer</th><th>Features</th><th>Geometry</th></tr></thead><tbody>{inventory_rows}</tbody></table></div></section>
+        <aside class='source-card'><div class='content-eyebrow'>SOURCE ORGANIZATIONS</div><h3>Data provenance</h3><p class='source-links'><a href='https://www.depts.ttu.edu/csc/' target='_blank'>Texas Tech University Climate Center</a><a href='https://www.h-gac.com/regional-growth-forecast' target='_blank'>H-GAC Regional Growth Forecast</a><a href='https://datalab.h-gac.com/rluis/' target='_blank'>H-GAC Land Use Dashboard</a><a href='https://hcad.org/hcad-online-services/pdata/' target='_blank'>Harris Central Appraisal District</a><a href='https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html' target='_blank'>CDC/ATSDR SVI</a></p><p class='source-note'>Review the attribution and data-notes file in the package for additional processing and interpretation details.</p></aside>
+      </div>
     </div>
     """
-    methods_div = Div(text=methods_html, width=PAGE_WIDTH, css_classes=["content-tab"])
+    methods_div = Div(text=methods_html, width=PAGE_WIDTH, visible=False, css_classes=["content-tab"])
 
     terms_html = """
     <div class='content-page terms-page'>
       <div class='content-eyebrow'>TERMS OF USE</div>
       <h2>Climate Housing Exposure Index Dashboard</h2>
-      <p>This dashboard is developed to visualize and explore spatial data related to precipitation extremes, housing stocks, population, and land-use projections. The information provided is intended for research, educational, and informational purposes only.</p>
-      <p>The data displayed in this dashboard are derived from multiple sources, including the <a href='https://www.depts.ttu.edu/csc/' target='_blank'>Texas Tech University Climate Science Center</a>, <a href='https://www.h-gac.com/regional-growth-forecast' target='_blank'>Houston-Galveston Area Council (H-GAC) Regional Growth Forecast</a>, <a href='https://datalab.h-gac.com/rluis/' target='_blank'>H-GAC Land Use Dashboard</a>, <a href='https://hcad.org/hcad-online-services/pdata/' target='_blank'>Harris Central Appraisal District (HCAD)</a>, and <a href='https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html' target='_blank'>CDC SVI Data</a>, and may include modeled, estimated, or projected values. While reasonable efforts have been made to ensure data accuracy and reliability, no guarantee is made regarding the completeness, accuracy, or timeliness of the information presented.</p>
-      <p>Users should not rely solely on the information provided in this dashboard for decision-making. The creators and affiliated institutions assume no responsibility or liability for any errors, omissions, or damages arising from the use of this information.</p>
-      <p>Unless otherwise noted, the data and visualizations are provided for non-commercial use. Proper attribution should be given when referencing or reproducing the materials.</p>
-      <p>By accessing and using this dashboard, users acknowledge and agree to these terms.</p>
+      <div class='terms-grid'>
+        <section><h3>Purpose and intended use</h3><p>This dashboard is developed to visualize and explore spatial data related to precipitation extremes, housing stocks, population, and land-use projections. The information provided is intended for research, educational, and informational purposes only.</p><p>Unless otherwise noted, the data and visualizations are provided for non-commercial use. Proper attribution should be given when referencing or reproducing the materials.</p></section>
+        <section><h3>Data sources and accuracy</h3><p>The data displayed in this dashboard are derived from multiple sources, including the <a href='https://www.depts.ttu.edu/csc/' target='_blank'>Texas Tech University Climate Science Center</a>, <a href='https://www.h-gac.com/regional-growth-forecast' target='_blank'>Houston-Galveston Area Council (H-GAC) Regional Growth Forecast</a>, <a href='https://datalab.h-gac.com/rluis/' target='_blank'>H-GAC Land Use Dashboard</a>, <a href='https://hcad.org/hcad-online-services/pdata/' target='_blank'>Harris Central Appraisal District (HCAD)</a>, and <a href='https://www.atsdr.cdc.gov/place-health/php/svi/svi-data-documentation-download.html' target='_blank'>CDC SVI Data</a>, and may include modeled, estimated, or projected values. While reasonable efforts have been made to ensure data accuracy and reliability, no guarantee is made regarding the completeness, accuracy, or timeliness of the information presented.</p></section>
+        <section><h3>Decision-making and liability</h3><p>Users should not rely solely on the information provided in this dashboard for decision-making. The creators and affiliated institutions assume no responsibility or liability for any errors, omissions, or damages arising from the use of this information.</p></section>
+        <section><h3>User acknowledgment</h3><p>By accessing and using this dashboard, users acknowledge and agree to these terms.</p><div class='terms-note'>Modeled and projected values should be validated with authoritative local data before they are used to support a specific policy, investment, or site-level decision.</div></section>
+      </div>
       <div class='contact-card'><div>QUESTIONS OR FEEDBACK</div><b>Kaifa Lu</b><span>CECREH</span><a href='mailto:Kaifa.Lu@ttu.edu'>Kaifa.Lu@ttu.edu</a></div>
     </div>
     """
-    terms_div = Div(text=terms_html, width=PAGE_WIDTH, css_classes=["content-tab"])
+    terms_div = Div(text=terms_html, width=PAGE_WIDTH, visible=False, css_classes=["content-tab"])
 
-    tabs = Tabs(tabs=[
-        TabPanel(child=explore_layout, title="Explore Dashboard"),
-        TabPanel(child=methods_div, title="Data & Methods"),
-        TabPanel(child=terms_div, title="Terms of Use"),
-    ], width=PAGE_WIDTH, css_classes=["main-tabs"])
+    main_nav = RadioButtonGroup(
+        labels=["Explore Dashboard", "Data & Methods", "Terms of Use"],
+        active=0, button_type="default", width=PAGE_WIDTH,
+        css_classes=["main-nav"], name="main_section_nav",
+    )
+    main_nav.js_on_change("active", CustomJS(args=dict(
+        nav=main_nav, explore=explore_layout, methods=methods_div, terms=terms_div,
+    ), code=r"""
+const panels=[explore,methods,terms];
+panels.forEach((panel,index)=>panel.visible=index===nav.active);
+setTimeout(()=>{window.dispatchEvent(new Event('resize'));},80);
+"""))
 
     footer = Div(text="""
     <footer class='site-footer'>
@@ -1451,7 +1812,10 @@ toggle.label=toggle.active?'Hide all commissioner precinct boundaries':'Show all
       <div class='footer-contact'><span>Questions or feedback</span><a href='mailto:Kaifa.Lu@ttu.edu'>Kaifa.Lu@ttu.edu</a><small>Kaifa Lu · CECREH</small></div>
     </footer>
     """, width=PAGE_WIDTH, css_classes=["footer-wrapper"])
-    page = column(header, overview, tabs, footer, width=PAGE_WIDTH, css_classes=["dashboard-shell"])
+    page = column(
+        header, overview, main_nav, explore_layout, methods_div, terms_div, footer,
+        width=PAGE_WIDTH, css_classes=["dashboard-shell"],
+    )
 
     css_rules = f":root{{--navy:{NAVY};--deep:{DEEP_NAVY};--teal:{TEAL};--aqua:{AQUA};--gold:{GOLD};--light:{LIGHT};--text:{TEXT};--muted:{MUTED};}}\n" + r"""
     *{box-sizing:border-box}html,body{margin:0;padding:0;background:#edf2f5;color:var(--text);font-family:Inter,"Segoe UI",Arial,sans-serif}body{min-width:1180px;overflow-x:auto}
@@ -1472,6 +1836,52 @@ toggle.label=toggle.active?'Hide all commissioner precinct boundaries':'Show all
     .main-tabs{width:1760px!important}.main-tabs .bk-tab{font-weight:700;color:var(--navy);padding:10px 24px!important}.main-tabs .bk-tab.bk-active{background:var(--teal)!important;color:#fff!important}.main-tabs .bk-header{background:#fff;border-bottom:3px solid var(--teal)!important;padding-left:28px!important}:host(.content-tab),.content-tab{width:1760px!important;background:#f4f7f9;padding:28px 42px 42px}.content-page{max-width:1420px;margin:0 auto;background:#fff;border:1px solid #dbe4e9;padding:34px 40px;box-shadow:0 4px 14px rgba(23,50,77,.06)}.content-page h2{font-size:28px;color:var(--navy);margin:0 0 20px}.content-page h3{color:var(--navy);margin-top:26px}.content-page p{font-size:14px;line-height:1.65;color:#405562}.method-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}.method-grid section{background:#f4f7f9;border-top:4px solid var(--teal);padding:17px}.method-grid h3{font-size:16px;margin:0 0 8px}.method-grid p{font-size:13px;margin:0}.notice{background:#fff4d9;border-left:5px solid var(--gold);padding:15px 17px;margin:20px 0;font-size:13px;line-height:1.5}.table-wrap{max-height:520px;overflow:auto;border:1px solid #dce5ea}.data-table{width:100%;border-collapse:collapse;font-size:12px}.data-table th{position:sticky;top:0;background:var(--navy);color:#fff;text-align:left;padding:10px}.data-table td{border-bottom:1px solid #e5ebef;padding:8px 10px}.data-table tr:nth-child(even){background:#f7f9fa}.source-links a,.content-page a{color:#087d88;text-decoration:none;font-weight:600}.source-links a:hover,.content-page a:hover{text-decoration:underline}.terms-page{max-width:1080px}.terms-page p{font-size:15px}.contact-card{margin-top:28px;background:var(--navy);color:#fff;padding:22px;display:grid;grid-template-columns:1fr 1fr;gap:5px 18px}.contact-card div{grid-column:1/3;font-size:11px;letter-spacing:1.5px;color:#7fd5d8}.contact-card b{font-size:19px}.contact-card span{text-align:right}.contact-card a{grid-column:1/3;color:#fff}
     .site-footer{width:1760px;background:var(--deep);color:#d7e6ea;padding:25px 38px;display:grid;grid-template-columns:1.15fr 1.45fr .9fr;gap:34px;align-items:center;font-size:12px;border-top:5px solid var(--teal)}.site-footer>div{min-width:0}.site-footer b,.site-footer span,.site-footer small{display:block}.footer-brand b{font-size:14px;color:#fff}.footer-brand span,.footer-purpose span,.footer-contact small{color:#9eb6c1;margin-top:4px}.footer-purpose{padding-left:26px;border-left:1px solid rgba(255,255,255,.16)}.footer-purpose b{color:#d9edf0}.footer-contact{text-align:right}.footer-contact span{text-transform:uppercase;letter-spacing:.8px;font-size:9px;color:#78ccd1}.site-footer a{color:#fff;text-decoration:none;font-weight:700;font-size:13px;margin-top:3px;display:block}.site-footer a:hover{text-decoration:underline}
     .bk-input,.bk-btn{border-radius:2px!important}.bk-btn-primary{background:var(--teal)!important;border-color:var(--teal)!important}.bk-slider-title{font-weight:600!important;color:#435969!important}.bk-input-group label{font-size:11px!important;text-transform:uppercase;letter-spacing:.4px;color:#506574!important;font-weight:700!important}
+
+    /* Consistent page shell and horizontal alignment. */
+    :host(.dashboard-shell),.bk-Column.dashboard-shell{width:1760px!important;max-width:1760px!important;min-width:1760px!important}
+    :host(.header-wrapper),:host(.overview-wrapper),:host(.footer-wrapper),:host(.kpi-wrapper),:host(.explore-layout),:host(.content-tab),:host(.main-nav),
+    .header-wrapper,.overview-wrapper,.footer-wrapper,.kpi-wrapper,.explore-layout,.content-tab,.main-nav{width:100%!important;max-width:none!important;margin:0!important}
+    :host .bk-clearfix,.bk-clearfix{display:block!important;width:100%!important;max-width:none!important}
+    .site-header,.hero,.overview-band,.site-footer{width:100%!important;max-width:none!important}
+    .site-footer{width:100%!important}
+
+    /* Custom navigation collapses inactive content so the footer follows each panel naturally. */
+    :host(.main-nav),.main-nav{height:46px!important;background:#fff;border-top:1px solid #dce5ea;border-bottom:3px solid var(--teal);padding:0 28px!important;display:flex!important;align-items:end!important}
+    :host(.main-nav) .bk-btn-group,.main-nav .bk-btn-group{justify-content:flex-start!important;width:100%!important;gap:0!important}
+    :host(.main-nav) .bk-btn,.main-nav .bk-btn{border:0!important;border-radius:0!important;background:#fff!important;color:var(--navy)!important;font-weight:700!important;padding:10px 18px!important;box-shadow:none!important}
+    :host(.main-nav) .bk-btn.bk-active,:host(.main-nav) .bk-btn.active,.main-nav .bk-btn.bk-active,.main-nav .bk-btn.active{background:var(--teal)!important;color:#fff!important}
+
+    /* Upper workspace: compact, content-driven columns. */
+    :host(.controls-column),:host(.map-column),:host(.insights-column),.controls-column,.map-column,.insights-column{height:auto!important;min-height:0!important;padding-bottom:16px!important}
+    .search-status,.zip-search-status,.precinct-search-status,.quick-decision-status,.report-status{min-height:0!important}
+    .workspace-help{background:#fff;border:1px solid #d8e2e8;border-left:4px solid var(--teal);padding:12px 15px;display:grid;grid-template-columns:210px 1fr;gap:16px;align-items:start;margin-top:7px}
+    .workspace-help>div span{display:block;font-size:9px;letter-spacing:1.1px;font-weight:800;color:var(--teal)}.workspace-help>div b{display:block;color:var(--navy);font-size:13px;margin-top:4px}
+    .workspace-help ol{margin:0;padding-left:18px;display:grid;grid-template-columns:repeat(3,1fr);gap:12px}.workspace-help li{font-size:10.5px;line-height:1.4;color:#4c6270;padding-right:8px}
+    .decision-help{background:#fff;border:1px solid #d8e2e8;border-left:4px solid #4cb8be;padding:12px 14px;margin:6px 0 8px}.decision-help p{font-size:10.5px;line-height:1.45;color:#4d6370;margin:5px 0}.report-help{border-left-color:var(--gold)}
+    .mini-workflow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:9px}.mini-workflow span{background:#edf4f6;padding:6px 4px;font-size:9.5px;font-weight:700;color:#425b69;text-align:center}.mini-workflow b{display:inline-grid;place-items:center;width:17px;height:17px;border-radius:50%;background:var(--teal);color:#fff;margin-right:3px}
+
+    /* Full-width analysis band eliminates the long empty area under the map. */
+    :host(.analysis-band),.analysis-band{width:1760px!important;background:#edf3f5;padding:4px 0 22px!important;border-top:1px solid #d8e3e8}
+    :host(.analysis-title),.analysis-title{width:1760px!important;padding:16px 28px 10px!important}
+    .analysis-heading{background:#fff;border:1px solid #d8e2e8;border-top:4px solid var(--teal);padding:12px 16px;display:flex;gap:12px;align-items:center}.analysis-heading>span{background:var(--teal);color:#fff;border-radius:14px;padding:4px 8px;font-size:11px;font-weight:800}.analysis-heading b{display:block;color:var(--navy);font-size:15px}.analysis-heading small{display:block;color:#647985;font-size:10.5px;margin-top:2px}
+    :host(.analysis-row),.analysis-row{width:1760px!important;padding:0 28px 14px!important;gap:14px!important;align-items:stretch!important;background:#edf3f5}
+    :host(.analysis-row-primary)>*, :host(.analysis-row-secondary)>*, :host(.analysis-row-actions)>*{align-self:stretch!important}
+    :host(.analysis-stack),.analysis-stack{width:500px!important;background:#fff;border:1px solid #d8e2e8;box-shadow:0 2px 7px rgba(23,50,77,.04);padding:8px!important}
+    :host(.analysis-stack) .bk-figure,.analysis-stack .bk-figure{margin:0 auto!important}
+    .analysis-card{height:auto!important;min-height:0!important}.info-panel,.selected-panel,.map-actions-wrapper{margin-top:0!important}
+    .info-panel{padding:18px 19px!important}.layer-info-head{display:flex;justify-content:space-between;gap:18px;align-items:flex-start;border-bottom:1px solid #e0e8ec;padding-bottom:12px}.layer-info-head h3{margin:0 0 6px;color:var(--navy);font-size:18px;line-height:1.25}.layer-info-head p{margin:0!important;font-size:11.5px!important;line-height:1.5!important}.layer-geo-badge{white-space:nowrap;background:#e4f3f3;color:#0b747c;border:1px solid #b9dcde;padding:5px 8px;font-size:9.5px;font-weight:800;text-transform:uppercase;letter-spacing:.45px}
+    .layer-facts-grid{display:grid;grid-template-columns:1.55fr .8fr .9fr;gap:8px;margin:12px 0}.layer-facts-grid>div{background:#f3f7f8;padding:9px 10px;min-width:0}.layer-facts-grid span{display:block;font-size:8.5px;font-weight:800;letter-spacing:.65px;text-transform:uppercase;color:#63808d;margin-bottom:4px}.layer-facts-grid b,.layer-facts-grid code{display:block;color:var(--navy);font-size:10.5px;line-height:1.35;overflow-wrap:anywhere;background:transparent;padding:0}
+    .layer-detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}.layer-detail-grid section{background:#f8fafb;border-top:3px solid #70c1c6;padding:9px 10px}.layer-detail-grid section:last-child{grid-column:1/3}.layer-detail-grid .layer-caution{border-top-color:var(--gold);background:#fff8e8}.layer-detail-grid h5{margin:0 0 4px;color:var(--navy);font-size:10.5px;text-transform:uppercase;letter-spacing:.35px}.layer-detail-grid p{font-size:10.5px!important;line-height:1.45!important;margin:0!important}
+    .hist-summary{border:0!important;background:#fff!important;padding:7px 12px 10px!important}.hist-summary p{font-size:11px!important}.selected-panel{padding:18px!important}.selected-panel h3{font-size:18px!important}.selected-grid{grid-template-columns:repeat(2,1fr)!important}.selected-grid>div{padding:10px!important}.selected-grid b{font-size:19px!important}
+    .map-guide-wrapper,.map-actions-wrapper{height:auto!important}.map-guide-wrapper{margin-top:7px!important}.map-guide,.action-panel{height:100%;margin:0!important}.guide-grid{grid-template-columns:repeat(4,1fr)!important}.guide-grid>div{min-height:82px!important}.analysis-row-secondary .bk-figure{background:#fff;border:1px solid #d8e2e8!important;box-shadow:0 2px 7px rgba(23,50,77,.04)}
+    .analysis-row-secondary .action-panel{min-height:278px}.analysis-row-actions .analysis-note{width:100%;min-height:0;padding:16px 20px!important;margin:0!important;display:grid;grid-template-columns:260px 1fr;column-gap:22px;align-items:start}.analysis-row-actions .analysis-note>b{font-size:13px;color:var(--navy)}.analysis-row-actions .analysis-note>p{margin:0!important}.analysis-row-actions .analysis-note>ul{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:0!important;padding-left:18px}.analysis-row-actions .insight-note{font-size:11px!important}.analysis-row-actions .insight-note li{margin:0;line-height:1.4}
+
+    /* All information panels share the same width and end naturally with their content. */
+    :host(.content-tab),.content-tab{width:1760px!important;background:#f4f7f9;padding:24px 28px 30px!important;height:auto!important;min-height:0!important}
+    .content-page{width:100%!important;max-width:none!important;margin:0!important;padding:30px 34px!important}.content-page h2{margin-bottom:10px!important}.content-lead{max-width:1100px;margin:0 0 20px!important;color:#526874!important}
+    .method-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:14px!important}.method-grid section{min-height:158px}.method-grid h3{margin-top:0!important}.methods-lower-grid{display:grid;grid-template-columns:minmax(0,1fr) 315px;gap:16px;align-items:start;margin-top:18px}.inventory-section h3{margin:0 0 9px}.table-wrap{max-height:430px!important}.source-card{background:#f3f7f8;border-top:4px solid var(--teal);padding:18px}.source-card h3{margin:0 0 8px!important}.source-links{display:grid;gap:8px;margin:0!important}.source-links a{display:block;background:#fff;border:1px solid #dce6ea;padding:8px 9px}.source-note{font-size:11.5px!important;line-height:1.5!important;margin:13px 0 0!important}
+    .terms-page{max-width:none!important}.terms-grid{display:grid;grid-template-columns:1fr 1fr;gap:15px}.terms-grid section{background:#f4f7f9;border-top:4px solid var(--teal);padding:18px}.terms-grid section:nth-child(3),.terms-grid section:nth-child(4){border-top-color:var(--gold)}.terms-grid h3{font-size:16px;margin:0 0 9px!important}.terms-grid p{font-size:13.5px!important;line-height:1.62!important;margin:0 0 10px}.terms-note{background:#fff4d9;border-left:4px solid var(--gold);padding:10px 12px;font-size:12px;line-height:1.5;color:#405562}.contact-card{margin-top:16px!important;grid-template-columns:1fr auto!important;align-items:center}.contact-card div{grid-column:1/3}.contact-card a{grid-column:1/3}
+
     @media(max-width:1500px){body{min-width:1180px}.site-header{padding:0 30px}.hero{padding-left:34px}.overview-grid p{font-size:11px}}
     """
     shared_stylesheet = InlineStyleSheet(css=css_rules)

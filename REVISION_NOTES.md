@@ -1,3 +1,40 @@
+# Revision Notes — August 27, 2026
+
+## Consistent page shell and responsive alignment
+
+- Aligned the site header, hero banner, overview, section navigation, Explore Dashboard, Data & Methods, Terms of Use, and footer to the same desktop outer width and left/right edges.
+- Added an explicit Bokeh wrapper-width override so embedded HTML cards occupy the full assigned width rather than shrinking to their text content.
+- Preserved responsive behavior for narrower screens while using consistent internal gutters across all three sections.
+
+## Explore Dashboard information architecture
+
+- Reorganized the Explore Dashboard into an upper mapping workspace and a lower full-width analysis band.
+- Retained the complete layer explorer, overlap screening, tract/ZIP/precinct locators, interactive legend, map, Quick Decision View, and one-page reporting controls in the upper workspace.
+- Moved the layer explanation, distribution, selected-tract profile, comparison charts, workflow guidance, and interpretation reminder into a balanced lower band.
+- Removed fixed-height containers and unequal column stretching that previously produced large unused areas.
+
+## Expanded Layer Reference
+
+- Added a structured Layer Reference for every selectable layer with: source layer, geography, reference period or GMT scenario, measurement, interpretation, potential planning use, and important limitation.
+- Preserved the supplied feature-class terminology for GMT precipitation point, kriging, tract, parcel, land-use, housing-stock, CHEI, population, household, employment, density, and SVI layers.
+- Kept methodological cautions for derived kriging display surfaces, composite indices, parcel-change subsets, housing-point previews, and screening thresholds.
+
+## Data & Methods and Terms of Use
+
+- Replaced the fixed-height Bokeh tab container with a custom three-section navigation bar so each section uses its own natural content height.
+- Reorganized Data & Methods into a balanced six-card architecture summary followed by the data audit and inventory.
+- Reorganized Terms of Use into a balanced two-column legal summary and full-width contact card while preserving the existing terms and source links.
+- Reduced the distance between the final content element and footer to a consistent content gutter rather than a large blank region.
+
+## Validation completed
+
+- Confirmed byte-identical data-self-contained HTML outputs.
+- Confirmed all major page-shell elements share the same 1760-pixel desktop width at a 1920-pixel viewport.
+- Confirmed the Data & Methods and Terms of Use sections end within a 20–40 pixel content gutter above the footer.
+- Re-ran prepared-data, hotspot, locator, legend, Quick Decision, report, layout, and JavaScript smoke tests.
+
+---
+
 # Revision Notes — August 26, 2026
 
 ## Commissioner precinct location and boundary display

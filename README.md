@@ -1,12 +1,20 @@
 # Climate-Housing Exposure Index Dashboard — Harris County, Texas
 
-Public GitHub Pages project: https://kaifalu.github.io/Climate-Housing-Exposure-Index-Dashboard/
+Public GitHub Pages project: `https://kaifalu.github.io/Climate-Housing-Exposure-Index-Dashboard/`
 
 The **Climate-Housing Exposure Index (CHEI) Dashboard** is an interactive web platform for examining where future extreme precipitation intersects with housing, population, employment, social vulnerability, and land-use change across Harris County. It combines climate projections at multiple global mean temperature (GMT) thresholds with 2020 conditions and 2050 projections to support place-based climate-risk screening.
 
 ## Current release
 
-This release retains the previous ZIP-code and pattern-based hotspot functions and adds four major decision-support improvements:
+The current release retains the ZIP-code, commissioner-precinct, pattern-based hotspot, clickable-legend, Quick Decision, and one-page-report functions while substantially improving the information architecture and visual balance:
+
+- a single responsive **1760-pixel page shell** aligns the header, hero, overview, navigation, all content panels, and footer at desktop width;
+- the **Explore Dashboard** uses an upper mapping workspace and a lower full-width analysis band, removing the large unused areas created by unequal three-column heights;
+- every selected layer now has an expanded **Layer Reference** with source layer, geography, reference period/scenario, measurement, interpretation, planning use, and limitation;
+- **Data & Methods** and **Terms of Use** use content-driven heights so their footers follow the content without artificial blank regions; and
+- a custom three-section navigation bar replaces the previous fixed-height tab container, while preserving the same Explore Dashboard, Data & Methods, and Terms of Use destinations.
+
+The release also retains the four major decision-support improvements introduced previously:
 
 - a **Harris County Commissioner Precinct locator** for Precincts 1–4, including a selected-boundary highlight and an optional overlay of all precinct boundaries;
 - **clickable map legends** that highlight one class at a time, fade nonmatching features, report the number of matches, and provide **Zoom to matches** and **Clear filter** actions;
@@ -80,6 +88,15 @@ The Explore Dashboard tab provides:
 - selected-tract profiles and charts;
 - four Quick Decision questions; and
 - a print-ready one-page decision brief for selected tract, ZIP, or precinct geography.
+
+## Balanced layout and layer reference
+
+The desktop interface uses one shared outer width and consistent gutters from the top header to the footer. The Explore Dashboard is organized in two complementary bands:
+
+1. an **upper mapping workspace** containing layer controls, the interactive map, legend, locators, Quick Decision tools, and reporting controls; and
+2. a **lower analysis band** containing the expanded Layer Reference, countywide distribution, selected-tract profile, climate and growth comparison charts, workflow guidance, and interpretation reminder.
+
+The Layer Reference is generated for every selectable map layer. It preserves the source feature-class terminology while translating the layer into plain-language information about what is shown, where and when it applies, how values should be read, how the layer may support planning, and what limitation should be considered.
 
 ## Clickable map legends
 
@@ -256,6 +273,7 @@ The two CHEI 2050 feature classes contain identical CHEI values and are consolid
 | `data/zipcodes_web.geojson` | Simplified 155-feature ZIP locator layer |
 | `data/commissioner_precincts_web.geojson` | Simplified four-feature commissioner precinct locator layer |
 | `docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.docx` / `.pdf` | Illustrated implementation and deployment guide |
+| `docs/CHEI_Dashboard_Layer_Source_Descriptions.txt` | Supplied source-layer descriptions used to expand the Layer Reference |
 | `REVISION_NOTES.md` | Detailed release record |
 | `TERMS_OF_USE.md` | Dashboard terms of use |
 

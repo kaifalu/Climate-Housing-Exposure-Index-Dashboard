@@ -1,7 +1,11 @@
-Climate Housing Exposure Index Dashboard — Final Deployment Package Manifest
-Release date: 2026-08-26
+Climate Housing Exposure Index Dashboard — Balanced Layout GitHub Pages Package Manifest
+Release date: 2026-08-27
 
 Implemented release functions:
+- One aligned desktop page shell for the header, hero, overview, navigation, all three content sections, and footer.
+- Content-driven Explore Dashboard, Data & Methods, and Terms of Use heights without artificial blank regions.
+- Upper mapping workspace and lower full-width analysis band in the Explore Dashboard.
+- Expanded Layer Reference for every selectable layer: source layer, geography, reference period/scenario, measurement, interpretation, planning use, and limitation.
 - Census-tract, ZIP-code, and Harris County commissioner-precinct location controls.
 - Optional overlays for all ZIP-code and all commissioner-precinct boundaries.
 - Single-category clickable legend filtering for tract, parcel, grid, point, hotspot, and kriging-related views.
@@ -21,16 +25,22 @@ Validated data counts:
 - Housing-density grid cells: 4,863
 - All-three-high hotspot tracts: 5
 
+Layout validation at a 1,920-pixel browser viewport:
+- Dashboard shell, header, hero, overview, navigation, Explore Dashboard, and footer: 1,760 pixels wide.
+- Data & Methods and Terms of Use content pages: 1,704 pixels wide inside shared gutters.
+- Gap from final Data & Methods / Terms content to footer: 30 pixels.
+- Explore Dashboard content ends directly at the footer without a fixed blank region.
+
 Package file inventory (relative path | bytes):
 .nojekyll | 0
 ATTRIBUTION_AND_DATA_NOTES.md | 2385
 Dockerfile | 259
-GITHUB_PAGES_DEPLOYMENT.md | 2413
-README.md | 15006
-REVISION_NOTES.md | 4169
+GITHUB_PAGES_DEPLOYMENT.md | 2792
+README.md | 17046
+REVISION_NOTES.md | 6929
 TERMS_OF_USE.md | 1384
-build_dashboard.py | 138480
-climate_housing_exposure_index_dashboard.html | 13220831
+build_dashboard.py | 171271
+climate_housing_exposure_index_dashboard.html | 13261588
 data/climate_points.csv | 54185
 data/commissioner_precincts_web.geojson | 140250
 data/county_web.geojson | 22017
@@ -57,34 +67,38 @@ data/sf_points_sorted.npy | 17489136
 data/sf_sample.csv | 994183
 data/tracts_web.geojson | 1921249
 data/zipcodes_web.geojson | 987907
+docs/CHEI_Dashboard_Layer_Source_Descriptions.txt | 6647
 docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.docx | 556594
 docs/Climate_Housing_Exposure_Index_Dashboard_Reproducibility_Guide.pdf | 547838
 environment.yml | 289
-index.html | 13220831
+index.html | 13261588
 preprocess_data.py | 19900
 render.yaml | 187
 requirements.txt | 168
 run_dashboard.bat | 47
 run_dashboard.sh | 76
+screenshots/balanced_explore_layout.png | 882212
 screenshots/commissioner_precinct_decision_brief.png | 116887
 screenshots/commissioner_precinct_locator.png | 386729
 screenshots/compound_hotspot_patterns.png | 411330
 screenshots/dashboard_initial_precinct.png | 407094
-screenshots/dashboard_overview.png | 408108
+screenshots/dashboard_overview.png | 430475
+screenshots/data_methods_balanced_layout.png | 505832
+screenshots/expanded_layer_reference.png | 122643
 screenshots/hotspot_legend_and_guidance.png | 300578
 screenshots/interactive_legend_filter.png | 437151
+screenshots/terms_of_use_balanced_layout.png | 379883
 screenshots/zip_locator_77007.png | 315702
-scripts/browser_smoke_test.py | 4213
+scripts/browser_smoke_test.py | 7236
 scripts/create_reproduction_guide.py | 38267
-scripts/validate_dashboard.py | 10086
+scripts/validate_dashboard.py | 10841
 server.py | 5147
 PACKAGE_MANIFEST.txt | generated release manifest
 checksums.sha256 | SHA-256 values for every package file except the checksum file itself
 
 Validation record:
-- preprocess_data.py completed successfully against Climate_Housing_Exposure_Index_Dashboard.gdb_boundary.zip.
 - build_dashboard.py regenerated both standalone HTML files successfully.
-- scripts/validate_dashboard.py passed all data, geometry, hotspot, locator, and embedded-HTML checks.
-- scripts/browser_smoke_test.py passed commissioner-precinct location/overlay, legend filtering, Quick Decision, and report generation.
-- FastAPI health, metadata, root dashboard, and capped full-point viewport endpoints returned successful responses.
-- The DOCX reproducibility guide was rendered and visually inspected across all pages; its PDF companion is included.
+- scripts/validate_dashboard.py passed all data, geometry, hotspot, locator, layer-reference, and embedded-HTML checks.
+- scripts/browser_smoke_test.py passed the aligned page shell, content-driven sections, expanded Layer Reference, commissioner-precinct location/overlay, legend filtering, Quick Decision, and report generation.
+- Visual QA confirmed the balanced Explore Dashboard, Data & Methods, and Terms of Use layouts at desktop width.
+- index.html and climate_housing_exposure_index_dashboard.html are byte-identical.
